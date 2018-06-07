@@ -364,23 +364,18 @@ class SINAMICS:
     # High level functions
     #------------------------------------------------------------------------------
     def readStatusWord(self):
-        try:
-            statusword = self.node.sdo['Statusword'].raw
-            return statusword, True
+        index = self.objectIndex['StatusWord']
+        subindex = 0
+        statusword = self.readObject(index, subindex)
+        # failded to request?
+        if not statusword:
+            logging.info("[EPOS:{0}] Error trying to read EPOS statusword".format(
+            sys._getframe().f_code.co_name))
+            return statusword, False
 
-        except canopen.SdoAbortedError as e:
-            text = "Code 0x{:08X}".format(e.code)
-            if e.code in self.errorIndex:
-                text = text + ", " + self.errorIndex[e.code]
-            self.logger.info('[{0}:{1}] SdoAbortedError: '.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name) + text)
-            return None, False
-        except canopen.SdoCommunicationError:
-            self.logger.info('[{0}:{1}] SdoAbortedError: Timeout or unexpected response'.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name))
-            return None, False
+        # return statusword as an int type
+        statusword = int.from_bytes(statusword, 'little')
+        return statusword, True
 
 
     def writeControlWord(self, controlword):
@@ -401,23 +396,19 @@ class SINAMICS:
         return self.writeObject(0x6040, 0, controlword)
 
     def readControlWord(self):
-        try:
-            controlword = self.node.sdo['Controlword'].raw
-            return controlword, True
+        index = self.objectIndex['ControlWord']
+        subindex = 0
+        controlword = self.readObject(index,subindex)
+        # failded to request?
+        if not controlword:
+            logging.info("[EPOS:{0}] Error trying to read EPOS controlword".format(
+            sys._getframe().f_code.co_name))
+            return controlword, False
 
-        except canopen.SdoAbortedError as e:
-            text = "Code 0x{:08X}".format(e.code)
-            if e.code in self.errorIndex:
-                text = text + ", " + self.errorIndex[e.code]
-            self.logger.info('[{0}:{1}] SdoAbortedError: '.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name) + text)
-            return None, False
-        except canopen.SdoCommunicationError:
-            self.logger.info('[{0}:{1}] SdoAbortedError: Timeout or unexpected response'.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name))
-            return None, False
+        # return controlword as an int type
+        controlword = int.from_bytes(controlword, 'little')
+        return controlword, True
+
 
     def readExtControlWord(self):
         try:
@@ -574,27 +565,27 @@ class SINAMICS:
         +==================================+=====+=====================+
         | Start                            | 0   | x0xx xxx0  x000 0000|
         +----------------------------------+-----+---------------------+
-        | Not Ready to Switch On           | 1   | x0xx xxx1  x000 0000|
+        | Not Ready to Switch On           | 1   | xxxx xxxx  x0xx 0000|
         +----------------------------------+-----+---------------------+
-        | Switch on disabled               | 2   | x0xx xxx1  x100 0000|
+        | Switch on disabled               | 2   | xxxx xxxx  x1xx 0000|
         +----------------------------------+-----+---------------------+
-        | ready to switch on               | 3   | x0xx xxx1  x010 0001|
+        | ready to switch on               | 3   | xxxx xxxx  x01x 0001|
         +----------------------------------+-----+---------------------+
-        | switched on                      | 4   | x0xx xxx1  x010 0011|
+        | switched on                      | 4   | xxxx xxxx  x01x 0011|
         +----------------------------------+-----+---------------------+
         | refresh                          | 5   | x1xx xxx1  x010 0011|
         +----------------------------------+-----+---------------------+
         | measure init                     | 6   | x1xx xxx1  x011 0011|
         +----------------------------------+-----+---------------------+
-        | operation enable                 | 7   | x0xx xxx1  x011 0111|
+        | operation enable                 | 7   | xxxx xxxx  x01x 0111|
         +----------------------------------+-----+---------------------+
-        | quick stop active                | 8   | x0xx xxx1  x001 0111|
+        | quick stop active                | 8   | xxxx xxxx  x00x 0111|
         +----------------------------------+-----+---------------------+
         | fault reaction active (disabled) | 9   | x0xx xxx1  x000 1111|
         +----------------------------------+-----+---------------------+
         | fault reaction active (enabled)  | 10  | x0xx xxx1  x001 1111|
         +----------------------------------+-----+---------------------+
-        | Fault                            | 11  | x0xx xxx1  x000 1000|
+        | Fault                            | 11  | xxxx xxxx  x0xx 1000|
         +----------------------------------+-----+---------------------+
 
 
@@ -616,23 +607,23 @@ class SINAMICS:
                 return ID
 
         # state 'not ready to switch on' (1)
-        # statusWord == x0xx xxx1  x000 0000
-            bitmask = 0b0100000101111111
-            if (bitmask & statusword == 256):
+        # statusWord == xxxx xxxx  x0xx 0000
+            bitmask = 0b0000000001001111
+            if (bitmask & statusword == 0):
                 ID = 1
                 return ID
 
             # state 'switch on disabled' (2)
-            # statusWord == x0xx xxx1  x100 0000
-            bitmask = 0b0100000101111111
-            if(bitmask & statusword == 320):
+            # statusWord == xxxx xxxx  x1xx 0000
+            bitmask = 0b0000000001001111
+            if(bitmask & statusword == 64):
                 ID = 2
                 return ID
 
             # state 'ready to switch on' (3)
-            # statusWord == x0xx xxx1  x010 0001
-            bitmask = 0b0100000101111111
-            if(bitmask & statusword == 289):
+            # statusWord == xxxx xxxx  x01x 0001
+            bitmask = 0b0000000001101111
+            if(bitmask & statusword == 33):
                 ID = 3
                 return ID
 
@@ -1260,7 +1251,7 @@ def main():
 
     # set up logging to file - see previous section for more details
     logging.basicConfig(level=logging.INFO,
-                    format='[%(asctime)s.%(msecs)03d] [%(name)-12s]: %(levelname)-8s %(message)s',
+                    format='[%(asctime)s.%(msecs)03d] [%(name)-20s]: %(levelname)-8s %(message)s',
                     datefmt='%d-%m-%Y %H:%M:%S',
                     filename='atv.log',
                     filemode='w')
@@ -1268,7 +1259,7 @@ def main():
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     # set a format which is simpler for console use
-    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+    formatter = logging.Formatter('%(name)-20s: %(levelname)-8s %(message)s')
     # tell the handler to use this format
     console.setFormatter(formatter)
     # add the handler to the root logger
@@ -1312,6 +1303,14 @@ def main():
         print("The statusword is \n Hex={0:#06X} Bin={0:#018b}".format(
             int.from_bytes(statusword, 'little')))
 
+    opMode = inverter.readObject(0x6060, 0)
+    if not opMode:
+        print("[SINAMICS] Error trying to read SINAMICS opMode\n")
+        return
+    else:
+        print('----------------------------------------------------------', flush=True)
+        print("The opMode is \n Hex={0:#06X} Bin={0:#018b}".format(
+            int.from_bytes(opMode, 'little')))
     # test printStatusWord and state
     print('----------------------------------------------------------', flush=True)
     print('Testing print of StatusWord and State and ControlWord')
