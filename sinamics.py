@@ -246,6 +246,13 @@ class SINAMICS:
                   0x0f00ffbc:  'Error code: device not in service mode',
                   0x0f00ffB9:  'Error code: error in Node-ID'
                   }
+    # dictionary describing opMode
+    opModes = {0: 'No mode assigned', 3: 'Profile Velocity Mode', -1: 'Manufacturer-specific OP1',
+               -2: 'Manufacturer-specific OP2', -3: 'Manufacturer-specific OP3', -4: 'Manufacturer-specific OP4',
+               -5: 'Manufacturer-specific OP5', -6: 'Manufacturer-specific OP6', -7: 'Manufacturer-specific OP7',
+               -15: 'Manufacturer-specific OP8', -18: 'Manufacturer-specific OP9', -20: 'Manufacturer-specific OP11',
+               -22: 'Manufacturer-specific OP12', 4: 'Profile Torque Mode'}
+    # dictionary describing current state of drive
     state = {0: 'start', 1: 'not ready to switch on', 2: 'switch on disable',
              3: 'ready to switch on', 4: 'switched on', 5: 'refresh',
              6: 'measure init', 7: 'operation enable', 8: 'quick stop active',
@@ -446,7 +453,7 @@ class SINAMICS:
         extControlWord = extControlWord.to_bytes(2, 'little')
         return self.writeObject(0x2037, 0x5, extControlWord)
 
-    def changeSINAMICSState(self, newState):
+    def changeState(self, newState):
         '''Change SINAMICS state
 
         Change SINAMICS state using controlWord object
@@ -555,7 +562,7 @@ class SINAMICS:
                 return self.writeControlWord(controlword)
 
 
-    def checkSINAMICSState(self):
+    def checkState(self):
         '''Check current state of SINAMICS
 
         Ask the StatusWord of SINAMICS and parse it to return the current state of SINAMICS.
@@ -691,7 +698,7 @@ class SINAMICS:
         return -1
 
     def printSINAMICSState (self):
-        ID = self.checkSINAMICSState()
+        ID = self.checkState()
         if ID is -1:
             print('[{0}:{1}] Error: Unknown state\n'.format(
                 self.__class__.__name__,
@@ -1235,7 +1242,7 @@ def main():
         return
 
     parser = argparse.ArgumentParser(add_help=True,
-                                     description='Test SINAMICS71 CANopen Communication')
+                                     description='Test SINAMICS CANopen Communication')
     parser.add_argument('--channel', '-c', action='store', default='can0',
                         type=str, help='Channel to be used', dest='channel')
     parser.add_argument('--bus', '-b', action='store',
@@ -1302,7 +1309,7 @@ def main():
         print('----------------------------------------------------------', flush=True)
         print("The statusword is \n Hex={0:#06X} Bin={0:#018b}".format(
             int.from_bytes(statusword, 'little')))
-
+    # try to read operation mode
     opMode = inverter.readObject(0x6060, 0)
     if not opMode:
         print("[SINAMICS] Error trying to read SINAMICS opMode\n")
@@ -1315,7 +1322,7 @@ def main():
     print('----------------------------------------------------------', flush=True)
     print('Testing print of StatusWord and State and ControlWord')
     print('----------------------------------------------------------', flush=True)
-    # inverter.printSINAMICSState()
+    inverter.printSINAMICSState()
     print('----------------------------------------------------------', flush=True)
     inverter.printStatusWord()
     print('----------------------------------------------------------', flush=True)
