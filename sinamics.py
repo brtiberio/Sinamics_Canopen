@@ -545,13 +545,13 @@ class SINAMICS:
                 mask  = ( 1<<2 | 1<< 1 | 1<<0 )
                 controlword = controlword | mask
                 return self.writeControlWord(controlword)
-            # enable operation 0xxx 1111
+            # enable operation x01x 0111
             if newState == 'enable operation':
                 # clear bits
-                mask = not ( 1<<7 )
+                mask = not ( 1<<6 | 1<<3 )
                 controlword = controlword & mask
                 # set bits
-                mask  = ( 1<< 3 | 1 << 2 | 1 << 1 | 1 << 0 )
+                mask  = ( 1<< 5 | 1 << 2 | 1 << 1 | 1 << 0 )
                 controlword = controlword | mask
                 return self.writeControlWord(controlword)
             # fault reset 1xxx xxxx
