@@ -714,6 +714,11 @@ class SINAMICS:
 
 
     def printStatusWord(self):
+        """ Print meaning of status word.
+
+        See https://w5.siemens.com/web/cz/cz/corporate/portal/home/produkty_a_sluzby/IBT/mereni_a_regulace/frekvencni_menice/Documents/014_Parameter_Manual_CU230P_V441_en.pdf
+        page 30 for meaning of each bit value.
+        """
         statusword, Ok = self.readStatusWord()
         if not Ok:
             print('[{0}:{1}] Failed to retreive statusword\n'.format(
@@ -725,21 +730,21 @@ class SINAMICS:
                 self.__class__.__name__,
                 sys._getframe().f_code.co_name,
                 statusword))
-            print('Bit 15: Direction of rotation [0 Foward | 1 Reverse]:          {0}'.format((statusword & (1 << 15))>>15))
-            print('Bit 14: STOP via stop key:                                     {0}'.format((statusword & (1 << 14))>>14))
-            print('Bit 13: Reserved:                                              {0}'.format((statusword & (1 << 13))>>13))
+            print('Bit 15: Alarm drive converter overload (1=No, 0=Yes):          {0}'.format((statusword & (1 << 15))>>15))
+            print('Bit 14: Motor rotates forwards:                                {0}'.format((statusword & (1 << 14))>>14))
+            print('Bit 13: Alarm motor overtemperature (1=No, 0=Yes):             {0}'.format((statusword & (1 << 13))>>13))
             print('Bit 12: Reserved:                                              {0}'.format((statusword & (1 << 12))>>12))
-            print('Bit 11: Internal limit active:                                 {0}'.format((statusword & (1 << 11))>>11))
-            print('Bit 10: Target reached:                                        {0}'.format((statusword & (1 << 10))>>10))
-            print('Bit 09: Command or reference via the network:                  {0}'.format((statusword & (1 << 9 ))>>9))
-            print('Bit 08: Reserved:                                              {0}'.format((statusword & (1 << 8 ))>>8))
-            print('Bit 07: Warning:                                               {0}'.format((statusword & (1 << 7 ))>>7))
+            print('Bit 11: I, M, P limit reached:                                 {0}'.format((statusword & (1 << 11))>>11))
+            print('Bit 10: Maximum speed reached:                                 {0}'.format((statusword & (1 << 10))>>10))
+            print('Bit 09: Control Request:                                       {0}'.format((statusword & (1 << 9 ))>>9))
+            print('Bit 08: Deviation, setpoint/actual speed(1=No, 0=Yes):         {0}'.format((statusword & (1 << 8 ))>>8))
+            print('Bit 07: Alarm:                                                 {0}'.format((statusword & (1 << 7 ))>>7))
             print('Bit 06: Switch on disable:                                     {0}'.format((statusword & (1 << 6 ))>>6))
-            print('Bit 05: Quick stop:                                            {0}'.format((statusword & (1 << 5 ))>>5))
-            print('Bit 04: Voltage enabled (power stage on):                      {0}'.format((statusword & (1 << 4 ))>>4))
+            print('Bit 05: Quick stop (OFF3):                                     {0}'.format((statusword & (1 << 5 ))>>5))
+            print('Bit 04: Coast down active (OFF2):                              {0}'.format((statusword & (1 << 4 ))>>4))
             print('Bit 03: Fault:                                                 {0}'.format((statusword & (1 << 3 ))>>3))
             print('Bit 02: Operation enable:                                      {0}'.format((statusword & (1 << 2 ))>>2))
-            print('Bit 01: Switched on:                                           {0}'.format((statusword & (1 << 1 ))>>1))
+            print('Bit 01: Ready:                                                 {0}'.format((statusword & (1 << 1 ))>>1))
             print('Bit 00: Ready to switch on:                                    {0}'.format(statusword & 1))
         return
 
@@ -1043,22 +1048,22 @@ class SINAMICS:
             self.__class__.__name__,
             sys._getframe().f_code.co_name,
             controlword))
-        print('Bit 15: Can be assigned to command:                     {0}'.format((controlword & (1 << 15 ))>>15))
-        print('Bit 14: Can be assigned to command:                     {0}'.format((controlword & (1 << 14 ))>>14))
-        print('Bit 13: Can be assigned to command:                     {0}'.format((controlword & (1 << 13 ))>>13))
+        print('Bit 15: CDS bit 0:                                      {0}'.format((controlword & (1 << 15 ))>>15))
+        print('Bit 14: Motorized potentiometer lower:                  {0}'.format((controlword & (1 << 14 ))>>14))
+        print('Bit 13: Motorized potentiometer raise:                  {0}'.format((controlword & (1 << 13 ))>>13))
         print('Bit 12: Can be assigned to command:                     {0}'.format((controlword & (1 << 12 ))>>12))
         print('Bit 11: Direction of rotation [0 Foward | 1 Reverse]:   {0}'.format((controlword & (1 << 11 ))>>11))
-        print('Bit 10: Reserved:                                       {0}'.format((controlword & (1 << 10 ))>>10))
-        print('Bit 09: Reserved:                                       {0}'.format((controlword & (1 << 9 ))>>9))
-        print('Bit 08: Halt:                                           {0}'.format((controlword & (1 << 8 ))>>8))
+        print('Bit 10: Master ctrl by PLC:                             {0}'.format((controlword & (1 << 10 ))>>10))
+        print('Bit 09: Jog bit 1:                                      {0}'.format((controlword & (1 << 9 ))>>9))
+        print('Bit 08: Jog bit 0:                                      {0}'.format((controlword & (1 << 8 ))>>8))
         print('Bit 07: Fault reset:                                    {0}'.format((controlword & (1 << 7 ))>>7))
-        print('Bit 06: Reserved:                                       {0}'.format((controlword & (1 << 6 ))>>6))
-        print('Bit 05: Reserved:                                       {0}'.format((controlword & (1 << 5 ))>>5))
-        print('Bit 04: Reserved:                                       {0}'.format((controlword & (1 << 4 ))>>4))
+        print('Bit 06: Speed setpoint enable:                          {0}'.format((controlword & (1 << 6 ))>>6))
+        print('Bit 05: Continue ramp-function generator:               {0}'.format((controlword & (1 << 5 ))>>5))
+        print('Bit 04: Ramp-function generator enable:                 {0}'.format((controlword & (1 << 4 ))>>4))
         print('Bit 03: Enable operation:                               {0}'.format((controlword & (1 << 3 ))>>3))
-        print('Bit 02: Quick stop:                                     {0}'.format((controlword & (1 << 2 ))>>2))
-        print('Bit 01: Enable voltage:                                 {0}'.format((controlword & (1 << 1 ))>>1))
-        print('Bit 00: Switch on:                                      {0}'.format(controlword & 1))
+        print('Bit 02: OC / OFF3 Qu                                    {0}'.format((controlword & (1 << 2 ))>>2))
+        print('Bit 01: OC / OFF2:                                      {0}'.format((controlword & (1 << 1 ))>>1))
+        print('Bit 00: ON/OFF1:                                        {0}'.format(controlword & 1))
         return
 
     # will be using dictionary object for now
@@ -1257,7 +1262,7 @@ def main():
 
 
     # set up logging to file - see previous section for more details
-    logging.basicConfig(level=logging.INFO,
+    logging.basicConfig(level=logging.DEBUG,
                     format='[%(asctime)s.%(msecs)03d] [%(name)-20s]: %(levelname)-8s %(message)s',
                     datefmt='%d-%m-%Y %H:%M:%S',
                     filename='atv.log',
