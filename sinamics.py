@@ -365,43 +365,6 @@ class SINAMICS:
         controlword = int.from_bytes(controlword, 'little')
         return controlword, True
 
-
-    def readExtControlWord(self):
-        try:
-            controlword = self.node.sdo['Controlword 1'].raw
-            return controlword, True
-
-        except canopen.SdoAbortedError as e:
-            text = "Code 0x{:08X}".format(e.code)
-            if e.code in self.errorIndex:
-                text = text + ", " + self.errorIndex[e.code]
-            self.logger.info('[{0}:{1}] SdoAbortedError: '.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name) + text)
-            return None, False
-        except canopen.SdoCommunicationError:
-            self.logger.info('[{0}:{1}] SdoAbortedError: Timeout or unexpected response'.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name))
-            return None, False
-
-    def writeExtControlWord(self, extControlWord):
-        '''Send extControlword to device
-
-        Args:
-            extControlword: word to be sent.
-
-        Returns:
-            bool: a boolean if all went ok.
-        '''
-        # sending new extControlWord
-        self.logger.debug('[{0}:{1}] Sending controlword Hex={2:#06X} Bin={2:#018b}'.format(
-            self.__class__.__name__,
-            sys._getframe().f_code.co_name,
-            extControlWord))
-        extControlWord = extControlWord.to_bytes(2, 'little')
-        return self.writeObject(0x2037, 0x5, extControlWord)
-
     def changeState(self, newState):
         '''Change SINAMICS state
 
@@ -646,7 +609,7 @@ class SINAMICS:
         )
         return -1
 
-    def printSINAMICSState (self):
+    def printState (self):
         ID = self.checkState()
         if ID is -1:
             print('[{0}:{1}] Error: Unknown state\n'.format(
@@ -660,7 +623,47 @@ class SINAMICS:
                 ID))
         return
 
+    def readParameter(self, parameter=None):
+        ''' Read Sinamics parameter value.
 
+        Args:
+            parameter: location to be read.
+        Returns:
+            tupple: A tupple containing:
+
+            :val:  the current value or None if any error.
+            :Ok: A boolean if all went ok.
+        '''
+        index = 0x2000 +  parameter
+        val, Ok = self.readObject(index, 0)
+        if not Ok:
+            self.logger.info('[{0}:{1}] Failed to request the Sinamics parameter'.format(
+                self.__class__.__name__,
+                sys._getframe().f_code.co_name))
+            return val, False
+
+        # return controlword as an int type
+        val = int.from_bytes(val, 'little')
+        return val, True
+    
+    def writeParameter(self, parameter=None, newData=None, length=2):
+        ''' Write Sinamics parameter value
+
+        Args:
+            parameter: location to be written
+            newData: value to be written
+            length: byte length
+        Returns:
+            bool: A boolean if all went ok
+        '''
+        if (parameter is None) or (newData is None):
+            self.logger.info('[{0}:{1}] Check arguments. Invalid arguments'.format(
+                self.__class__.__name__,
+                sys._getframe().f_code.co_name))
+            return False
+        index = 0x2000 +  parameter
+        newData = newData.to_bytes(length, 'little')
+        return self.writeObject(index, 0, newData)
 
     def printStatusWord(self):
         """ Print meaning of status word.
@@ -736,6 +739,30 @@ class SINAMICS:
         print('Bit 00: ON/OFF1:                                        {0}'.format(controlword & 1))
         return
 
+    def printParameter(self, parameter=None, isFloat=False):
+        '''Print value of requested SINAMICS parameter.
+
+        Request the SINAMICS for the current value of parameter.
+        In CAN, the parameter number, should be converted to hex
+        and added with 0x2000 (for the first drive).
+
+        Args:
+            parameter: value of Sinamics parameter to be printed.
+            isFloat: Boolean, if the value to be read is float or not.
+        '''
+        val, Ok  = self.readParameter(parameter=parameter)
+        if not Ok:
+            print('[{0}:{1}] Failed to retreive parameter\n'.format(
+                    self.__class__.__name__,
+                    sys._getframe().f_code.co_name))
+            return
+
+        if isFloat:
+            # TODO
+            pass
+        else:
+            print('Parameter {0} value is {1}'.format(parameter, val))
+        return
 
 def main():
     '''Test SINAMICS CANopen communication with some examples.
@@ -745,6 +772,11 @@ def main():
 
     Show sample using also the EDS file.
     '''
+
+    def print_speed(message):
+        print('{0} received'.format(message.name))
+        for var in message:
+            print('{0} = {1}'.format(var.name, var.raw))
 
     import argparse
     if (sys.version_info < (3, 0)):
@@ -832,12 +864,41 @@ def main():
     print('----------------------------------------------------------', flush=True)
     print('Testing print of StatusWord and State and ControlWord')
     print('----------------------------------------------------------', flush=True)
-    inverter.printSINAMICSState()
+    inverter.printState()
     print('----------------------------------------------------------', flush=True)
     inverter.printStatusWord()
     print('----------------------------------------------------------', flush=True)
     inverter.printControlWord()
     print('----------------------------------------------------------', flush=True)
+
+    # testing pdo objects
+    inverter.node.pdo.read()
+    # Do some changes to TxPDO4 and RxPDO4
+    inverter.node.pdo.tx[0].clear()
+    # add statusword as pdo
+    inverter.node.pdo.tx[0].add_variable(0x6041, 0, 16)
+    # add target velocity as pdo
+    inverter.node.pdo.tx[0].add_variable(0x60FC, 0, 32)
+    inverter.node.pdo.tx[0].trans_type = 254
+    inverter.node.pdo.tx[0].event_timer = 10
+    inverter.node.pdo.tx[0].enabled = True
+
+    # Save new configuration (node must be in pre-operational)
+    inverter.node.nmt.state = 'PRE-OPERATIONAL'
+    inverter.node.pdo.save()
+    # Export a database file of PDO configuration
+    inverter.node.pdo.export('database.dbc')
+    inverter.node.pdo.tx[0].add_callback(print_speed)
+    inverter.node.nmt.state = 'OPERATIONAL'
+
+    try:
+        while (1):
+            input("Any key to exit... ")
+            print('done')
+    except KeyboardInterrupt as e:
+        print('Got execption {0}\nexiting now'.format(e))
+    finally:
+        inverter.node.nmt.state = 'PRE-OPERATIONAL'        
     return
 
 if __name__ == '__main__':
