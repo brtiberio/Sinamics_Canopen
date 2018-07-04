@@ -635,12 +635,12 @@ class SINAMICS:
             :Ok: A boolean if all went ok.
         '''
         index = 0x2000 +  parameter
-        val, Ok = self.readObject(index, 0)
-        if not Ok:
+        val = self.readObject(index, 0)
+        if val is None:
             self.logger.info('[{0}:{1}] Failed to request the Sinamics parameter'.format(
                 self.__class__.__name__,
                 sys._getframe().f_code.co_name))
-            return val, False
+            return None, False
 
         # return controlword as an int type
         val = int.from_bytes(val, 'little')
