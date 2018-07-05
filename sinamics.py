@@ -220,6 +220,48 @@ class SINAMICS:
             self.logger.setLevel(logging.DEBUG)
         else:
             self.logger.setLevel(logging.INFO)
+    
+    def logInfo(self, message=None):
+        ''' Log a message
+
+        A wrap around logging.
+        The log message will have the following structure\:
+        [class name \: function name ] message
+
+        Args:
+            message: a string with the message.
+        '''
+        if message is None:
+            # do nothing
+            return
+        self.logger.info('[{0}:{1}] {2}'.format(
+                self.__class__.__name__,
+                sys._getframe(1).f_code.co_name, 
+                message))
+        return
+
+    def logDebug(self, message=None):
+        ''' Log a message
+
+        A wrap around logging.
+        The log message will have the following structure\:
+        [class name \: function name ] message
+
+        the function name will be the caller function retrieved automatically 
+        by using sys._getframe(1).f_code.co_name
+        
+        Args:
+            message: a string with the message.
+        '''
+        if message is None:
+            # do nothing
+            return
+
+        self.logger.debug('[{0}:{1}] {2}'.format(
+                self.__class__.__name__,
+                sys._getframe(1).f_code.co_name, 
+                message))
+        return
 
     def begin(self, nodeID, _channel='can0', _bustype='socketcan', objectDictionary=None):
         '''Initialize SINAMICS device
@@ -240,10 +282,7 @@ class SINAMICS:
             self.network.connect(channel=_channel, bustype=_bustype)
             self._connected = True
         except Exception as e:
-            self.logger.info('[{0}:{1}] Exception caught:{2}\n'.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name,
-                str(e)))
+            self.logInfo("Exception caught:{0}".format(str(e)))
             self._connected = False
         finally:
             return self._connected
@@ -270,15 +309,11 @@ class SINAMICS:
             try:
                 return self.node.sdo.upload(index, subindex)
             except Exception as e:
-                self.logger.info('[{0}:{1}] Exception caught:{2}\n'.format(
-                    self.__class__.__name__,
-                    sys._getframe().f_code.co_name,
-                    str(e)))
+                self.logInfo('Exception caught:{0}'.format(str(e)))
                 return None
         else:
-            self.logger.info('[{0}:{1}] Error: {0} is not connected\n'.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name))
+            self.logInfo(' Error: {0} is not connected'.format(
+                self.__class__.__name__))
             return None
 
     def writeObject(self, index, subindex, data):
@@ -301,19 +336,14 @@ class SINAMICS:
                 text = "Code 0x{:08X}".format(e.code)
                 if e.code in self.errorIndex:
                     text = text + ", " + self.errorIndex[e.code]
-                self.logger.info('[{0}:{1}] SdoAbortedError: '.format(
-                    self.__class__.__name__,
-                    sys._getframe().f_code.co_name) + text)
+                self.logInfo('SdoAbortedError: ' + text)
                 return False
             except canopen.SdoCommunicationError:
-                self.logger.info('[{0}:{1}] SdoAbortedError: Timeout or unexpected response'.format(
-                    self.__class__.__name__,
-                    sys._getframe().f_code.co_name))
+                self.logInfo('SdoAbortedError: Timeout or unexpected response')
                 return False
         else:
-            self.logger.info('[{0}:{1}] Error: {0} is not connected\n'.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name))
+            self.logInfo(' Error: {0} is not connected'.format(
+                self.__class__.__name__))
             return False
 
     #------------------------------------------------------------------------------
@@ -325,8 +355,8 @@ class SINAMICS:
         statusword = self.readObject(index, subindex)
         # failded to request?
         if not statusword:
-            logging.info("[EPOS:{0}] Error trying to read EPOS statusword".format(
-            sys._getframe().f_code.co_name))
+            self.logInfo('Error trying to read {0} statusword'.format(
+            self.__class__.__name__))
             return statusword, False
 
         # return statusword as an int type
@@ -344,10 +374,7 @@ class SINAMICS:
             bool: a boolean if all went ok.
         '''
         # sending new controlword
-        self.logger.debug('[{0}:{1}] Sending controlword Hex={2:#06X} Bin={2:#018b}'.format(
-            self.__class__.__name__,
-            sys._getframe().f_code.co_name,
-            controlword))
+        self.logDebug('Sending controlword Hex={0:#06X} Bin={0:#018b}'.format(controlword))
         controlword = controlword.to_bytes(2, 'little')
         return self.writeObject(0x6040, 0, controlword)
 
@@ -357,8 +384,8 @@ class SINAMICS:
         controlword = self.readObject(index,subindex)
         # failded to request?
         if not controlword:
-            logging.info("[EPOS:{0}] Error trying to read EPOS controlword".format(
-            sys._getframe().f_code.co_name))
+            self.logInfo('Error trying to read {0} controlword'.format(
+            self.__class__.__name__))
             return controlword, False
 
         # return controlword as an int type
@@ -403,17 +430,12 @@ class SINAMICS:
                       'disable operation', 'enable operation', 'fault reset']
 
         if not (newState in stateOrder):
-            logging.info('[{0}:{1}] Unkown state: {2}'.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name,
-                newState))
+            self.logInfo('Unkown state: {0}'.format(newState))
             return False
         else:
             controlword, Ok = self.readControlWord()
             if not Ok:
-                logging.info('[{0}:{1}] Failed to retreive controlword'.format(
-                    self.__class__.__name__,
-                    sys._getframe().f_code.co_name))
+                self.logInfo('Failed to retreive controlword')
                 return False
             # shutdown  0xxx x110
             if newState == 'shutdown':
@@ -513,9 +535,7 @@ class SINAMICS:
         '''
         statusword, ok = self.readStatusWord()
         if not ok:
-            self.logger.info('[{0}:{1}] Failed to request StatusWord\n'.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name))
+            self.logInfo('Failed to request StatusWord')
         else:
 
             # state 'start' (0)
@@ -602,9 +622,7 @@ class SINAMICS:
                 return ID
 
         # in case of unknown state or fail
-        print('[{0}:{1}] Error: Unknown state\nStatusword is Bin={2:#018b}'.format(
-            self.__class__.__name__,
-            sys._getframe().f_code.co_name,
+        self.logInfo('Error: Unknown state. Statusword is Bin={0:#018b}'.format(
             int.from_bytes(statusword, 'little'))
         )
         return -1
@@ -637,9 +655,7 @@ class SINAMICS:
         index = 0x2000 +  parameter
         val = self.readObject(index, 0)
         if val is None:
-            self.logger.info('[{0}:{1}] Failed to request the Sinamics parameter'.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name))
+            self.logInfo('Failed to request the Sinamics parameter')
             return None, False
 
         # return controlword as an int type
@@ -657,9 +673,7 @@ class SINAMICS:
             bool: A boolean if all went ok
         '''
         if (parameter is None) or (newData is None):
-            self.logger.info('[{0}:{1}] Check arguments. Invalid arguments'.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name))
+            self.logInfo('Check arguments. Invalid arguments')
             return False
         index = 0x2000 +  parameter
         newData = newData.to_bytes(length, 'little')
