@@ -24,6 +24,7 @@
 import canopen
 import sys
 import logging
+from time import sleep 
 
 class SINAMICS:
 
@@ -885,32 +886,44 @@ def main():
     inverter.printControlWord()
     print('----------------------------------------------------------', flush=True)
 
+
+    # create 
+    
     # testing pdo objects
     inverter.node.pdo.read()
     # Do some changes to TxPDO4 and RxPDO4
-    inverter.node.pdo.tx[0].clear()
-    # add statusword as pdo
-    inverter.node.pdo.tx[0].add_variable(0x6041, 0, 16)
-    # add target velocity as pdo
-    inverter.node.pdo.tx[0].add_variable(0x60FC, 0, 32)
-    inverter.node.pdo.tx[0].trans_type = 254
-    inverter.node.pdo.tx[0].event_timer = 10
-    inverter.node.pdo.tx[0].enabled = True
+    # inverter.node.pdo.tx[1].clear()
+    # # add statusword as pdo
+    # inverter.node.pdo.tx[2].add_variable(0x6041, 0, 16)
+    # # add target velocity as pdo
+    # inverter.node.pdo.tx[2].add_variable(0x60FC, 0, 32)
+    inverter.node.pdo.tx[1].trans_type = 254
+    inverter.node.pdo.tx[1].event_timer = 2000
+    inverter.node.pdo.tx[1].enabled = True
 
     # Save new configuration (node must be in pre-operational)
     inverter.node.nmt.state = 'PRE-OPERATIONAL'
-    inverter.node.pdo.save()
+    # inverter.node.pdo.save()
     # Export a database file of PDO configuration
     inverter.node.pdo.export('database.dbc')
-    inverter.node.pdo.tx[0].add_callback(print_speed)
+    inverter.node.pdo.tx[1].add_callback(print_speed)
     inverter.node.nmt.state = 'OPERATIONAL'
 
     try:
+        print("Ctrl+C to exit... ")
+        flagBit = False
         while (1):
-            input("Any key to exit... ")
-            print('done')
+            # test raw pdo transmition
+            if flagBit:
+                inverter.network.send_message(0x202, 0x406) 
+            else:
+                inverter.network.send_message(0x202, 0x406)
+            flagBit = not flagBit
+            sleep(1)   
     except KeyboardInterrupt as e:
-        print('Got execption {0}\nexiting now'.format(e))
+        print('Got {0}\nexiting now'.format(e))
+    except can.CanError:
+        print("Message NOT sent")
     finally:
         inverter.node.nmt.state = 'PRE-OPERATIONAL'        
     return
