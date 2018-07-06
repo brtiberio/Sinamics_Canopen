@@ -144,7 +144,7 @@ SupportedObjects=13
 13=0x1200
 
 [1003]
-ParameterName=Pre-defined Error Field
+ParameterName=Error History
 ObjectType=0x8
 SubNumber=83
 
