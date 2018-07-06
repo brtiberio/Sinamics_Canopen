@@ -915,14 +915,14 @@ def main():
         while (1):
             # test raw pdo transmition
             if flagBit:
-                inverter.network.send_message(0x202, 0x406) 
+                inverter.network.send_message(0x202, 0x406.to_bytes(2, 'little')) 
             else:
-                inverter.network.send_message(0x202, 0x406)
+                inverter.network.send_message(0x202, 0x400.to_bytes(2, 'little'))
             flagBit = not flagBit
             sleep(1)   
     except KeyboardInterrupt as e:
         print('Got {0}\nexiting now'.format(e))
-    except can.CanError:
+    except CanError:
         print("Message NOT sent")
     finally:
         inverter.node.nmt.state = 'PRE-OPERATIONAL'        
