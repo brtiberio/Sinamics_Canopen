@@ -24,7 +24,7 @@
 import canopen
 import sys
 import logging
-from time import sleep 
+from time import sleep
 
 class SINAMICS:
 
@@ -221,7 +221,7 @@ class SINAMICS:
             self.logger.setLevel(logging.DEBUG)
         else:
             self.logger.setLevel(logging.INFO)
-    
+
     def logInfo(self, message=None):
         ''' Log a message
 
@@ -237,7 +237,7 @@ class SINAMICS:
             return
         self.logger.info('[{0}:{1}] {2}'.format(
                 self.__class__.__name__,
-                sys._getframe(1).f_code.co_name, 
+                sys._getframe(1).f_code.co_name,
                 message))
         return
 
@@ -248,9 +248,9 @@ class SINAMICS:
         The log message will have the following structure\:
         [class name \: function name ] message
 
-        the function name will be the caller function retrieved automatically 
+        the function name will be the caller function retrieved automatically
         by using sys._getframe(1).f_code.co_name
-        
+
         Args:
             message: a string with the message.
         '''
@@ -260,7 +260,7 @@ class SINAMICS:
 
         self.logger.debug('[{0}:{1}] {2}'.format(
                 self.__class__.__name__,
-                sys._getframe(1).f_code.co_name, 
+                sys._getframe(1).f_code.co_name,
                 message))
         return
 
@@ -500,7 +500,8 @@ class SINAMICS:
     def checkState(self):
         '''Check current state of SINAMICS
 
-        Ask the StatusWord of SINAMICS and parse it to return the current state of SINAMICS.
+        Ask the StatusWord of SINAMICS and parse it to return the current state
+        of SINAMICS.
 
         +----------------------------------+-----+---------------------+
         | State                            | ID  | Statusword [binary] |
@@ -662,7 +663,7 @@ class SINAMICS:
         # return controlword as an int type
         val = int.from_bytes(val, 'little')
         return val, True
-    
+
     def writeParameter(self, parameter=None, newData=None, length=2):
         ''' Write Sinamics parameter value
 
@@ -887,8 +888,8 @@ def main():
     print('----------------------------------------------------------', flush=True)
 
 
-    # create 
-    
+    # create
+
     # testing pdo objects
     inverter.node.pdo.read()
     # Do some changes to TxPDO4 and RxPDO4
@@ -915,17 +916,17 @@ def main():
         while (1):
             # test raw pdo transmition
             if flagBit:
-                inverter.network.send_message(0x202, 0x406.to_bytes(2, 'little')) 
+                inverter.network.send_message(0x202, 0x406.to_bytes(2, 'little'))
             else:
                 inverter.network.send_message(0x202, 0x400.to_bytes(2, 'little'))
             flagBit = not flagBit
-            sleep(1)   
+            sleep(1)
     except KeyboardInterrupt as e:
         print('Got {0}\nexiting now'.format(e))
     except CanError:
         print("Message NOT sent")
     finally:
-        inverter.node.nmt.state = 'PRE-OPERATIONAL'        
+        inverter.node.nmt.state = 'PRE-OPERATIONAL'
     return
 
 if __name__ == '__main__':
