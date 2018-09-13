@@ -2,3 +2,4 @@ autopep8>=1.3.5
 canopen>=0.6.0
 pycodestyle>=2.4.0
 pylint>=1.9.1
+canmatrix
