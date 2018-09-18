@@ -25,6 +25,15 @@ import canopen
 import sys
 import logging
 from time import sleep
+import pdb
+
+def print_message(message):
+        print('%s received' % message.name)
+        print("--")
+
+        for var in message:
+            print('%s = %d' % (var.name, var.raw))
+
 
 class SINAMICS:
 
@@ -813,12 +822,11 @@ def main():
                         type=str, help='Object dictionary file', dest='objDict')
     args = parser.parse_args()
 
-
     # set up logging to file - see previous section for more details
     logging.basicConfig(level=logging.DEBUG,
                     format='[%(asctime)s.%(msecs)03d] [%(name)-20s]: %(levelname)-8s %(message)s',
                     datefmt='%d-%m-%Y %H:%M:%S',
-                    filename='atv.log',
+                    filename='sinamics.log',
                     filemode='w')
     # define a Handler which writes INFO messages or higher
     console = logging.StreamHandler()
@@ -898,36 +906,72 @@ def main():
     # inverter.node.pdo.tx[2].add_variable(0x6041, 0, 16)
     # # add target velocity as pdo
     # inverter.node.pdo.tx[2].add_variable(0x60FC, 0, 32)
-    inverter.node.pdo.tx[1].trans_type = 254
-    inverter.node.pdo.tx[1].event_timer = 2000
-    inverter.node.pdo.tx[1].enabled = True
+#    inverter.node.pdo.tx[1].trans_type = 254
+#    inverter.node.pdo.tx[1].event_timer = 2000
+#    inverter.node.pdo.tx[1].enabled = True
 
     # Save new configuration (node must be in pre-operational)
     inverter.node.nmt.state = 'PRE-OPERATIONAL'
-    # inverter.node.pdo.save()
-    # Export a database file of PDO configuration
-    inverter.node.pdo.export('database.dbc')
-    inverter.node.pdo.tx[1].add_callback(print_speed)
+    # inverter.node.pdo.save()'
+
+    inverter.node.pdo.tx[1].clear()
+    inverter.node.pdo.tx[2].clear()
+    inverter.node.pdo.tx[3].clear()
+    inverter.node.pdo.tx[4].clear()
+
+    inverter.node.pdo.rx[1].clear()
+    inverter.node.pdo.rx[2].clear()
+    inverter.node.pdo.rx[3].clear()
+    inverter.node.pdo.rx[4].clear()
+
+    inverter.node.pdo.tx[2].clear()
+    inverter.node.pdo.tx[2].add_variable(0x6041, 0, 16)
+    inverter.node.pdo.tx[2].add_variable(0x606C, 0, 32)
+    inverter.node.pdo.tx[2].enabled = True
+    # inverter.node.pdo.tx[2].event_timer = 2000
+    inverter.node.pdo.tx[2].trans_type = 1
+
+    pdb.set_trace()
+
+    # Save parameters to device and change to pre-operati$
+    inverter.node.nmt.state = 'PRE-OPERATIONAL'
+    inverter.node.pdo.tx[2].save()
+
+    # Add callback for message reception
+    inverter.node.pdo.tx[2].add_callback(print_message)
+
+    # Start RPDO4 with an interval of 100 ms
+    # inverter.node.rpdo[4][0x2062].phys = 1
+    # inverter.node.pdo.rx[2].start(0.1)
+    # inverter.node.nmt.state = 'OPERATIONAL'
+
+    # Set back into operational mode
     inverter.node.nmt.state = 'OPERATIONAL'
 
+    # Transmit every 10 ms
+    inverter.network.sync.start(2)
+
+    # sleep(20)
     try:
         print("Ctrl+C to exit... ")
         flagBit = False
         while (1):
             # test raw pdo transmition
-            if flagBit:
-                inverter.network.send_message(0x202, 0x406.to_bytes(2, 'little'))
-            else:
-                inverter.network.send_message(0x202, 0x400.to_bytes(2, 'little'))
-            flagBit = not flagBit
+            #if flagBit:
+            #    inverter.network.send_message(0x202, 0x406.to_bytes(2, 'little'))
+            #else:
+            #    inverter.network.send_message(0x202, 0x400.to_bytes(2, 'little'))
+            #flagBit = not flagBit
             sleep(1)
     except KeyboardInterrupt as e:
         print('Got {0}\nexiting now'.format(e))
     except CanError:
         print("Message NOT sent")
     finally:
+        inverter.network.sync.stop()
         inverter.node.nmt.state = 'PRE-OPERATIONAL'
     return
+
 
 if __name__ == '__main__':
     main()
