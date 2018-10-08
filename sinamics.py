@@ -25,9 +25,10 @@ import canopen
 import sys
 import logging
 from time import sleep
+import struct
 # import pdb
-import pydevd
-pydevd.settrace('192.168.137.1', port=9000, stdoutToServer=True, stderrToServer=True)
+#import pydevd
+#pydevd.settrace('192.168.1.181', port=9000, stdoutToServer=True, stderrToServer=True)
 
 
 class SINAMICS:
@@ -776,8 +777,7 @@ class SINAMICS:
             return
 
         if isFloat:
-            # TODO
-            pass
+            print('Parameter {0} value is {1}'.format(parameter, struct.unpack('<f', val)))
         else:
             print('Parameter {0} value is {1}'.format(parameter, int.from_bytes(val, 'little')))
         return
@@ -832,14 +832,15 @@ class SINAMICS:
         """
         Print value of voltage for frequency equal to zero
         """
-        val, ok = self.readVOFminVoltage()
-        if not ok:
+        val = self.readVOFminVoltage()
+        if not val:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
                 self.__class__.__name__,
                 sys._getframe().f_code.co_name))
             return
         else:
-            print('VOF min Voltage value is {0}V'.format(int.from_bytes(val, 'little')))
+            print('VOF min Voltage value is {0}V'.format(struct.unpack('<f', val)))
+            #print('VOF min Voltage value is {0}V'.format(int.from_bytes(val, 'little')))
         return
 
     def readVOFcharVoltage(self):
@@ -875,14 +876,14 @@ class SINAMICS:
         """
         Print value of voltage for characteristic frequency
         """
-        val, ok = self.readVOFcharVoltage()
-        if not ok:
+        val = self.readVOFcharVoltage()
+        if not val:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
                 self.__class__.__name__,
                 sys._getframe().f_code.co_name))
             return
         else:
-            print('VOF min Voltage value is {0}V'.format(int.from_bytes(val, 'little')))
+            print('VOF characteristic Voltage value is {0}V'.format(struct.unpack('<f', val)))
         return
 
     def readVOFcharFrequency(self):
@@ -918,14 +919,14 @@ class SINAMICS:
         """
         Print value of characteristic frequency
         """
-        val, ok = self.readVOFcharFrequency()
-        if not ok:
+        val = self.readVOFcharFrequency()
+        if not val:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
                 self.__class__.__name__,
                 sys._getframe().f_code.co_name))
             return
         else:
-            print('VOF characteristic frequency value is {0}Hz'.format(int.from_bytes(val, 'little')))
+            print('VOF characteristic frequency value is {0}Hz'.format(struct.unpack('<f', val)))
         return
 
     def printTorqueSmoothed(self):
@@ -936,10 +937,14 @@ class SINAMICS:
                 sys._getframe().f_code.co_name))
             return
         else:
-            print('Torque smoothed value is {0}N'.format(int.from_bytes(val, 'little')))
+            print('Torque smoothed value is {0}N'.format(struct.unpack('<f', val)))
         return
 
     def printCurrentSmoothed(self):
+        """
+        TODO
+        :return:
+        """
         val, ok = self.readParameter(parameter=27)
         if not ok:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
@@ -947,7 +952,7 @@ class SINAMICS:
                 sys._getframe().f_code.co_name))
             return
         else:
-            print('Torque smoothed value is {0}A rms'.format(int.from_bytes(val, 'little')))
+            print('Torque smoothed value is {0}A rms'.format(struct.unpack('<f', val)))
         return
 
 def main():
@@ -966,8 +971,8 @@ def main():
         for var in message:
             print('%s = %d' % (var.name, var.raw))
 
-        inverter.printCurrentSmoothed()
-        inverter.printTorqueSmoothed()
+        # inverter.printCurrentSmoothed()
+        # inverter.printTorqueSmoothed()
 
     import argparse
     if (sys.version_info < (3, 0)):
@@ -1062,12 +1067,16 @@ def main():
     inverter.printControlWord()
     print('----------------------------------------------------------', flush=True)
     # print VOF vars
-    print('----------------------------------------------------------', flush=True)
     print('Testing print of VOF related variables')
     print('----------------------------------------------------------', flush=True)
     inverter.printVOFminVoltage()
     inverter.printVOFcharVoltage()
     inverter.printVOFcharFrequency()
+    print('----------------------------------------------------------', flush=True)
+    print('Testing print of Torque and current values')
+    print('----------------------------------------------------------', flush=True)
+    inverter.printTorqueSmoothed()
+    inverter.printCurrentSmoothed()
     print('----------------------------------------------------------', flush=True)
     # create
 
@@ -1102,7 +1111,7 @@ def main():
     inverter.node.pdo.tx[2].add_variable(0x606C, 0, 32)
     inverter.node.pdo.tx[2].enabled = True
     # inverter.node.pdo.tx[2].event_timer = 2000
-    inverter.node.pdo.tx[2].trans_type = 1
+    inverter.node.pdo.tx[2].trans_type = 254
 
     # pdb.set_trace()
     inverter.changeState('fault reset')
@@ -1123,7 +1132,7 @@ def main():
     inverter.node.nmt.state = 'OPERATIONAL'
 
     # Transmit every 10 ms
-    inverter.network.sync.start(2)
+    # inverter.network.sync.start(2)
     sleep(0.1)
     inverter.writeObject(0x6040, 0, (6).to_bytes(2, 'little'))
     # inverter.changeState('shutdown')
@@ -1136,7 +1145,6 @@ def main():
     # sleep(20)
     try:
         print("Ctrl+C to exit... ")
-        flagBit = False
         while True:
             velocity = int(input('Set your velocity...'))
             if velocity is None:
@@ -1150,7 +1158,7 @@ def main():
     except CanError:
         print("Message NOT sent")
     finally:
-        inverter.network.sync.stop()
+        # inverter.network.sync.stop()
         inverter.node.nmt.state = 'PRE-OPERATIONAL'
         inverter.setTargetVelocity(0)
         # inverter.writeObject(0x6040, 0, (0).to_bytes(2, 'little'))
