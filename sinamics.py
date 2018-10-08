@@ -435,12 +435,12 @@ class SINAMICS:
                       'disable operation', 'enable operation', 'fault reset']
 
         if not (newState in stateOrder):
-            self.logInfo('Unkown state: {0}'.format(newState))
+            self.logInfo('Unknown state: {0}'.format(newState))
             return False
         else:
             controlword, Ok = self.readControlWord()
             if not Ok:
-                self.logInfo('Failed to retreive controlword')
+                self.logInfo('Failed to retrieve controlword')
                 return False
             # shutdown  0xxx x110
             if newState == 'shutdown':
@@ -472,7 +472,7 @@ class SINAMICS:
                 mask = not ( 1<<7 | 1 << 2)
                 controlword = controlword & mask
                 # set bits
-                mask  = ( 1<<1 )
+                mask = (1 << 1)
                 controlword = controlword | mask
                 return self.writeControlWord(controlword)
             # disable operation 0xxx 0111
@@ -630,58 +630,6 @@ class SINAMICS:
         self.logInfo('Error: Unknown state. Statusword is Bin={0:#018b}'.format(statusword))
         return -1
 
-    def printState (self):
-        ID = self.checkState()
-        if ID is -1:
-            print('[{0}:{1}] Error: Unknown state\n'.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name))
-        else:
-            print('[{0}:{1}] Current state [ID]:{2} [{3}]\n'.format(
-                self.__class__.__name__,
-                sys._getframe().f_code.co_name,
-                self.state[ID],
-                ID))
-        return
-
-    def readParameter(self, parameter=None):
-        """ Read Sinamics parameter value.
-
-        Args:
-            parameter: location to be read.
-        Returns:
-            tupple: A tupple containing:
-
-            :val:  the current value or None if any error.
-            :Ok: A boolean if all went ok.
-        """
-        index = 0x2000 +  parameter
-        val = self.readObject(index, 0)
-        if val is None:
-            self.logInfo('Failed to request the Sinamics parameter')
-            return None, False
-
-        # return controlword as an int type
-        val = int.from_bytes(val, 'little')
-        return val, True
-
-    def writeParameter(self, parameter=None, newData=None, length=2):
-        """ Write Sinamics parameter value
-
-        Args:
-            parameter: location to be written
-            newData: value to be written
-            length: byte length
-        Returns:
-            bool: A boolean if all went ok
-        """
-        if (parameter is None) or (newData is None):
-            self.logInfo('Check arguments. Invalid arguments')
-            return False
-        index = 0x2000 +  parameter
-        newData = newData.to_bytes(length, 'little')
-        return self.writeObject(index, 0, newData)
-
     def printStatusWord(self):
         """ Print meaning of status word.
 
@@ -756,6 +704,59 @@ class SINAMICS:
         print('Bit 00: ON/OFF1:                                        {0}'.format(controlword & 1))
         return
 
+    def printState(self):
+        ID = self.checkState()
+        if ID is -1:
+            print('[{0}:{1}] Error: Unknown state\n'.format(
+                self.__class__.__name__,
+                sys._getframe().f_code.co_name))
+        else:
+            print('[{0}:{1}] Current state [ID]:{2} [{3}]\n'.format(
+                self.__class__.__name__,
+                sys._getframe().f_code.co_name,
+                self.state[ID],
+                ID))
+        return
+
+    def readParameter(self, parameter=None):
+        """ Read Sinamics parameter value.
+
+        Args:
+            parameter: location to be read.
+        Returns:
+            tupple: A tupple containing:
+
+            :val:  the current value or None if any error.
+            :Ok: A boolean if all went ok.
+        """
+        index = 0x2000 + parameter
+        val = self.readObject(index, 0)
+        if val is None:
+            self.logInfo('Failed to request the Sinamics parameter')
+            return None, False
+
+        # return controlword as an int type
+        return val, True
+
+    def writeParameter(self, parameter=None, newData=None, length=2):
+        """ Write Sinamics parameter value
+
+        Args:
+            parameter: location to be written
+            newData: value to be written
+            length: byte length
+        Returns:
+            bool: A boolean if all went ok
+        """
+        if (parameter is None) or (newData is None):
+            self.logInfo('Check arguments. Invalid arguments')
+            return False
+        index = 0x2000 + parameter
+        newData = newData.to_bytes(length, 'little')
+        return self.writeObject(index, 0, newData)
+
+
+
     def printParameter(self, parameter=None, isFloat=False):
         """Print value of requested SINAMICS parameter.
 
@@ -767,9 +768,9 @@ class SINAMICS:
             parameter: value of Sinamics parameter to be printed.
             isFloat: Boolean, if the value to be read is float or not.
         """
-        val, Ok  = self.readParameter(parameter=parameter)
+        val, Ok = self.readParameter(parameter=parameter)
         if not Ok:
-            print('[{0}:{1}] Failed to retreive parameter\n'.format(
+            print('[{0}:{1}] Failed to retrieve parameter\n'.format(
                     self.__class__.__name__,
                     sys._getframe().f_code.co_name))
             return
@@ -778,7 +779,7 @@ class SINAMICS:
             # TODO
             pass
         else:
-            print('Parameter {0} value is {1}'.format(parameter, val))
+            print('Parameter {0} value is {1}'.format(parameter, int.from_bytes(val, 'little')))
         return
 
     def setTargetVelocity(self, rpm=0):
@@ -798,7 +799,157 @@ class SINAMICS:
         
         return self.writeObject(index, subindex, rpm.to_bytes(4, 'little', signed=True))
     
-    
+    def readVOFminVoltage(self):
+        """
+        Read minimum V/F voltage for frequency equal to zero
+
+        Return:
+            int: current value of V/F voltage for f=0 or None if failed
+        """
+        val, ok = self.readParameter(1319)
+        if not ok:
+            return None
+        else:
+            return val
+
+    def setVOFminVoltage(self, voltage=None):
+        """
+        Write minimum V/F voltage for frequency equal to zero
+
+        Return:
+            bool: a boolean if all went ok or not.
+
+        """
+        if voltage is None:
+            self.logInfo('Invalid arguments. No voltage value supplied')
+            return False
+        if voltage < 0 or voltage > 50:
+            self.logInfo('Voltage limits exceeded: {0}. Value must be between 0 and 50.'.format(voltage))
+            return False
+        return self.writeParameter(parameter=1319, newData=voltage, length=2)
+
+    def printVOFminVoltage(self):
+        """
+        Print value of voltage for frequency equal to zero
+        """
+        val, ok = self.readVOFminVoltage()
+        if not ok:
+            print('[{0}:{1}] Failed to retrieve parameter\n'.format(
+                self.__class__.__name__,
+                sys._getframe().f_code.co_name))
+            return
+        else:
+            print('VOF min Voltage value is {0}V'.format(int.from_bytes(val, 'little')))
+        return
+
+    def readVOFcharVoltage(self):
+        """
+        Read minimum V/F voltage for characteristic frequency.
+
+        Return:
+            int: current value of V/F voltage for characteristic frequency or None if failed
+        """
+        val, ok = self.readParameter(1327)
+        if not ok:
+            return None
+        else:
+            return val
+
+    def setVOFcharVoltage(self, voltage=None):
+        """
+        Write  V/F voltage for characteristic frequency
+
+        Return:
+            bool: a boolean if all went ok or not.
+
+        """
+        if voltage is None:
+            self.logInfo('Invalid arguments. No voltage value supplied')
+            return False
+        if voltage < 0 or voltage > 10000:
+            self.logInfo('Voltage limits exceeded: {0}. Value must be between 0 and 10000.'.format(voltage))
+            return False
+        return self.writeParameter(parameter=1327, newData=voltage, length=2)
+
+    def printVOFcharVoltage(self):
+        """
+        Print value of voltage for characteristic frequency
+        """
+        val, ok = self.readVOFcharVoltage()
+        if not ok:
+            print('[{0}:{1}] Failed to retrieve parameter\n'.format(
+                self.__class__.__name__,
+                sys._getframe().f_code.co_name))
+            return
+        else:
+            print('VOF min Voltage value is {0}V'.format(int.from_bytes(val, 'little')))
+        return
+
+    def readVOFcharFrequency(self):
+        """
+        Read minimum V/F voltage for characteristic frequency.
+
+        Return:
+            int: current value of V/F voltage for characteristic frequency or None if failed
+        """
+        val, ok = self.readParameter(1326)
+        if not ok:
+            return None
+        else:
+            return val
+
+    def setVOFcharFrequency(self, frequency=None):
+        """
+        Write  V/F voltage for characteristic frequency
+
+        Return:
+            bool: a boolean if all went ok or not.
+
+        """
+        if frequency is None:
+            self.logInfo('Invalid arguments. No voltage value supplied')
+            return False
+        if frequency < 0 or frequency > 10000:
+            self.logInfo('Frequency limits exceeded: {0}. Value must be between 0 and 10000.'.format(frequency))
+            return False
+        return self.writeParameter(parameter=1327, newData=frequency, length=2)
+
+    def printVOFcharFrequency(self):
+        """
+        Print value of characteristic frequency
+        """
+        val, ok = self.readVOFcharFrequency()
+        if not ok:
+            print('[{0}:{1}] Failed to retrieve parameter\n'.format(
+                self.__class__.__name__,
+                sys._getframe().f_code.co_name))
+            return
+        else:
+            print('VOF characteristic frequency value is {0}Hz'.format(int.from_bytes(val, 'little')))
+        return
+
+    def printTorqueSmoothed(self):
+        val, ok = self.readParameter(parameter=31)
+        if not ok:
+            print('[{0}:{1}] Failed to retrieve parameter\n'.format(
+                self.__class__.__name__,
+                sys._getframe().f_code.co_name))
+            return
+        else:
+            print('Torque smoothed value is {0}N'.format(int.from_bytes(val, 'little')))
+        return
+
+    def printCurrentSmoothed(self):
+        val, ok = self.readParameter(parameter=27)
+        if not ok:
+            print('[{0}:{1}] Failed to retrieve parameter\n'.format(
+                self.__class__.__name__,
+                sys._getframe().f_code.co_name))
+            return
+        else:
+            print('Torque smoothed value is {0}A rms'.format(int.from_bytes(val, 'little')))
+        return
+
 def main():
     """Test SINAMICS CANopen communication with some examples.
 
@@ -814,6 +965,9 @@ def main():
 
         for var in message:
             print('%s = %d' % (var.name, var.raw))
+
+        inverter.printCurrentSmoothed()
+        inverter.printTorqueSmoothed()
 
     import argparse
     if (sys.version_info < (3, 0)):
@@ -840,6 +994,7 @@ def main():
                     datefmt='%d-%m-%Y %H:%M:%S',
                     filename='sinamics.log',
                     filemode='w')
+
     # define a Handler which writes INFO messages or higher
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
@@ -906,8 +1061,14 @@ def main():
     print('----------------------------------------------------------', flush=True)
     inverter.printControlWord()
     print('----------------------------------------------------------', flush=True)
-
-
+    # print VOF vars
+    print('----------------------------------------------------------', flush=True)
+    print('Testing print of VOF related variables')
+    print('----------------------------------------------------------', flush=True)
+    inverter.printVOFminVoltage()
+    inverter.printVOFcharVoltage()
+    inverter.printVOFcharFrequency()
+    print('----------------------------------------------------------', flush=True)
     # create
 
     # testing pdo objects
@@ -965,17 +1126,20 @@ def main():
     inverter.network.sync.start(2)
     sleep(0.1)
     inverter.writeObject(0x6040, 0, (6).to_bytes(2, 'little'))
+    # inverter.changeState('shutdown')
     sleep(0.1)
     inverter.writeObject(0x6040, 0, (7).to_bytes(2, 'little'))
+    # inverter.changeState('switch on')
     sleep(0.1)
     inverter.writeObject(0x6040, 0, (15).to_bytes(2, 'little'))
+    # inverter.changeState('enable operation')
     # sleep(20)
     try:
         print("Ctrl+C to exit... ")
         flagBit = False
-        while (1):
-            velocity=int(input('Set your velocity...'))
-            if velocity == None:
+        while True:
+            velocity = int(input('Set your velocity...'))
+            if velocity is None:
                 pass
             else:
                 print('Setting velocity to {0}'.format(velocity))
@@ -989,8 +1153,8 @@ def main():
         inverter.network.sync.stop()
         inverter.node.nmt.state = 'PRE-OPERATIONAL'
         inverter.setTargetVelocity(0)
-        inverter.writeObject(0x6040, 0, (0).to_bytes(2, 'little'))
-
+        # inverter.writeObject(0x6040, 0, (0).to_bytes(2, 'little'))
+        inverter.changeState('shutdown')
     return
 
 

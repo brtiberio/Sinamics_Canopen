@@ -67,3 +67,5 @@ test_finally\.py
 \.vscode/
 
 pip-selfcheck\.json
+
+\.idea/
