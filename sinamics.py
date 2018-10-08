@@ -25,14 +25,9 @@ import canopen
 import sys
 import logging
 from time import sleep
-import pdb
-
-def print_message(message):
-        print('%s received' % message.name)
-        print("--")
-
-        for var in message:
-            print('%s = %d' % (var.name, var.raw))
+# import pdb
+import pydevd
+pydevd.settrace('192.168.137.1', port=9000, stdoutToServer=True, stderrToServer=True)
 
 
 class SINAMICS:
@@ -232,7 +227,7 @@ class SINAMICS:
             self.logger.setLevel(logging.INFO)
 
     def logInfo(self, message=None):
-        ''' Log a message
+        """ Log a message
 
         A wrap around logging.
         The log message will have the following structure\:
@@ -240,7 +235,7 @@ class SINAMICS:
 
         Args:
             message: a string with the message.
-        '''
+        """
         if message is None:
             # do nothing
             return
@@ -251,7 +246,7 @@ class SINAMICS:
         return
 
     def logDebug(self, message=None):
-        ''' Log a message
+        """ Log a message
 
         A wrap around logging.
         The log message will have the following structure\:
@@ -262,7 +257,7 @@ class SINAMICS:
 
         Args:
             message: a string with the message.
-        '''
+        """
         if message is None:
             # do nothing
             return
@@ -274,7 +269,7 @@ class SINAMICS:
         return
 
     def begin(self, nodeID, _channel='can0', _bustype='socketcan', objectDictionary=None):
-        '''Initialize SINAMICS device
+        """Initialize SINAMICS device
 
         Configure and setup SINAMICS device.
 
@@ -285,7 +280,7 @@ class SINAMICS:
             objectDictionary (optional):   Name of EDS file, if any available.
         Return:
             bool: A boolean if all went ok.
-        '''
+        """
         try:
             self.node = self.network.add_node(
                 nodeID, object_dictionary=objectDictionary)
@@ -305,7 +300,7 @@ class SINAMICS:
     # Basic set of functions
     #--------------------------------------------------------------
     def readObject(self, index, subindex):
-        '''Reads an object
+        """Reads an object
 
          Request a read from dictionary object referenced by index and subindex.
 
@@ -314,7 +309,7 @@ class SINAMICS:
              subindex:  reference of dictionary object subindex
          Returns:
              bytes:  message returned by SINAMICS or empty if unsucessfull
-        '''
+        """
         if self._connected:
             try:
                 return self.node.sdo.upload(index, subindex)
@@ -327,7 +322,7 @@ class SINAMICS:
             return None
 
     def writeObject(self, index, subindex, data):
-        '''Write an object
+        """Write an object
 
          Request a write to dictionary object referenced by index and subindex.
 
@@ -337,7 +332,7 @@ class SINAMICS:
              data:      data to be stored
          Returns:
              bool:      boolean if all went ok or not
-        '''
+        """
         if self._connected:
             try:
                 self.node.sdo.download(index, subindex, data)
@@ -375,14 +370,14 @@ class SINAMICS:
 
 
     def writeControlWord(self, controlword):
-        '''Send controlword to device
+        """Send controlword to device
 
         Args:
             controlword: word to be sent.
 
         Returns:
             bool: a boolean if all went ok.
-        '''
+        """
         # sending new controlword
         self.logDebug('Sending controlword Hex={0:#06X} Bin={0:#018b}'.format(controlword))
         controlword = controlword.to_bytes(2, 'little')
@@ -403,7 +398,7 @@ class SINAMICS:
         return controlword, True
 
     def changeState(self, newState):
-        '''Change SINAMICS state
+        """Change SINAMICS state
 
         Change SINAMICS state using controlWord object
 
@@ -435,7 +430,7 @@ class SINAMICS:
 
         Returns:
             bool: boolean if all went ok and no error was received.
-        '''
+        """
         stateOrder = ['shutdown', 'switch on', 'disable voltage', 'quick stop',
                       'disable operation', 'enable operation', 'fault reset']
 
@@ -505,9 +500,8 @@ class SINAMICS:
                 controlword = controlword | mask
                 return self.writeControlWord(controlword)
 
-
     def checkState(self):
-        '''Check current state of SINAMICS
+        """Check current state of SINAMICS
 
         Ask the StatusWord of SINAMICS and parse it to return the current state
         of SINAMICS.
@@ -543,7 +537,7 @@ class SINAMICS:
 
         Returns:
             int: numeric identification of the state or -1 in case of fail.
-        '''
+        """
         statusword, ok = self.readStatusWord()
         if not ok:
             self.logInfo('Failed to request StatusWord')
@@ -633,9 +627,7 @@ class SINAMICS:
                 return ID
 
         # in case of unknown state or fail
-        self.logInfo('Error: Unknown state. Statusword is Bin={0:#018b}'.format(
-            int.from_bytes(statusword, 'little'))
-        )
+        self.logInfo('Error: Unknown state. Statusword is Bin={0:#018b}'.format(statusword))
         return -1
 
     def printState (self):
@@ -653,7 +645,7 @@ class SINAMICS:
         return
 
     def readParameter(self, parameter=None):
-        ''' Read Sinamics parameter value.
+        """ Read Sinamics parameter value.
 
         Args:
             parameter: location to be read.
@@ -662,7 +654,7 @@ class SINAMICS:
 
             :val:  the current value or None if any error.
             :Ok: A boolean if all went ok.
-        '''
+        """
         index = 0x2000 +  parameter
         val = self.readObject(index, 0)
         if val is None:
@@ -674,7 +666,7 @@ class SINAMICS:
         return val, True
 
     def writeParameter(self, parameter=None, newData=None, length=2):
-        ''' Write Sinamics parameter value
+        """ Write Sinamics parameter value
 
         Args:
             parameter: location to be written
@@ -682,7 +674,7 @@ class SINAMICS:
             length: byte length
         Returns:
             bool: A boolean if all went ok
-        '''
+        """
         if (parameter is None) or (newData is None):
             self.logInfo('Check arguments. Invalid arguments')
             return False
@@ -726,7 +718,7 @@ class SINAMICS:
         return
 
     def printControlWord(self, controlword=None):
-        '''Print the meaning of controlword
+        """Print the meaning of controlword
 
         Check the meaning of current controlword of device or check the meaning of your own controlword.
         Usefull to check your own controlword before actually sending it to device.
@@ -734,7 +726,7 @@ class SINAMICS:
         Args:
             controlword (optional): If None, request the controlword of device.
 
-        '''
+        """
         if not controlword:
             controlword, Ok = self.readControlWord()
             if not Ok:
@@ -765,7 +757,7 @@ class SINAMICS:
         return
 
     def printParameter(self, parameter=None, isFloat=False):
-        '''Print value of requested SINAMICS parameter.
+        """Print value of requested SINAMICS parameter.
 
         Request the SINAMICS for the current value of parameter.
         In CAN, the parameter number, should be converted to hex
@@ -774,7 +766,7 @@ class SINAMICS:
         Args:
             parameter: value of Sinamics parameter to be printed.
             isFloat: Boolean, if the value to be read is float or not.
-        '''
+        """
         val, Ok  = self.readParameter(parameter=parameter)
         if not Ok:
             print('[{0}:{1}] Failed to retreive parameter\n'.format(
@@ -789,19 +781,39 @@ class SINAMICS:
             print('Parameter {0} value is {1}'.format(parameter, val))
         return
 
+    def setTargetVelocity(self, rpm=0):
+        """
+        Set target velocity for sinamics
+        
+        Args: 
+            rpm: velocity in rpms. Must be a signed int32
+        Returns:
+            A boolean if all went ok or not.
+        """
+        index = self.objectIndex['TargetVelocity']
+        subindex = 0
+        if rpm > 2**31 or rpm < -2**31:
+            self.logInfo("RPM value outside range: {0}".format(rpm))
+            return False
+        
+        return self.writeObject(index, subindex, rpm.to_bytes(4, 'little', signed=True))
+    
+    
 def main():
-    '''Test SINAMICS CANopen communication with some examples.
+    """Test SINAMICS CANopen communication with some examples.
 
     Use a few examples to test communication with SINAMICS device using
     a few functions. Also resets the fault error if present.
 
     Show sample using also the EDS file.
-    '''
+    """
 
-    def print_speed(message):
-        print('{0} received'.format(message.name))
+    def print_message(message):
+        print('%s received' % message.name)
+        print("--")
+
         for var in message:
-            print('{0} = {1}'.format(var.name, var.raw))
+            print('%s = %d' % (var.name, var.raw))
 
     import argparse
     if (sys.version_info < (3, 0)):
@@ -838,7 +850,7 @@ def main():
     # add the handler to the root logger
     logging.getLogger('').addHandler(console)
 
-    # instanciate object
+    # instantiate object
     inverter = SINAMICS()
 
     if not (inverter.begin(args.nodeID, objectDictionary=args.objDict)):
@@ -931,9 +943,10 @@ def main():
     # inverter.node.pdo.tx[2].event_timer = 2000
     inverter.node.pdo.tx[2].trans_type = 1
 
-    pdb.set_trace()
-
-    # Save parameters to device and change to pre-operati$
+    # pdb.set_trace()
+    inverter.changeState('fault reset')
+    sleep(0.1)
+    # Save parameters to device and change to pre-operational
     inverter.node.nmt.state = 'PRE-OPERATIONAL'
     inverter.node.pdo.tx[2].save()
 
@@ -950,18 +963,23 @@ def main():
 
     # Transmit every 10 ms
     inverter.network.sync.start(2)
-
+    sleep(0.1)
+    inverter.writeObject(0x6040, 0, (6).to_bytes(2, 'little'))
+    sleep(0.1)
+    inverter.writeObject(0x6040, 0, (7).to_bytes(2, 'little'))
+    sleep(0.1)
+    inverter.writeObject(0x6040, 0, (15).to_bytes(2, 'little'))
     # sleep(20)
     try:
         print("Ctrl+C to exit... ")
         flagBit = False
         while (1):
-            # test raw pdo transmition
-            #if flagBit:
-            #    inverter.network.send_message(0x202, 0x406.to_bytes(2, 'little'))
-            #else:
-            #    inverter.network.send_message(0x202, 0x400.to_bytes(2, 'little'))
-            #flagBit = not flagBit
+            velocity=int(input('Set your velocity...'))
+            if velocity == None:
+                pass
+            else:
+                print('Setting velocity to {0}'.format(velocity))
+                inverter.setTargetVelocity(velocity)
             sleep(1)
     except KeyboardInterrupt as e:
         print('Got {0}\nexiting now'.format(e))
@@ -970,6 +988,9 @@ def main():
     finally:
         inverter.network.sync.stop()
         inverter.node.nmt.state = 'PRE-OPERATIONAL'
+        inverter.setTargetVelocity(0)
+        inverter.writeObject(0x6040, 0, (0).to_bytes(2, 'little'))
+
     return
 
 
