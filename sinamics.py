@@ -26,6 +26,7 @@ import sys
 import logging
 from time import sleep
 import struct
+from can import CanError  # TODO restudy need of this import since canopen already use it
 # import pdb
 #import pydevd
 #pydevd.settrace('192.168.1.181', port=9000, stdoutToServer=True, stderrToServer=True)
@@ -295,11 +296,12 @@ class SINAMICS:
 
     def disconnect(self):
         self.network.disconnect
+        self._connected = False
         return
 
-    #--------------------------------------------------------------
+    # --------------------------------------------------------------
     # Basic set of functions
-    #--------------------------------------------------------------
+    # --------------------------------------------------------------
     def readObject(self, index, subindex):
         """Reads an object
 
@@ -352,10 +354,18 @@ class SINAMICS:
                 self.__class__.__name__))
             return False
 
-    #------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------
     # High level functions
-    #------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------
     def readStatusWord(self):
+        """Read statusword from device
+
+        Returns:
+            tupple: A tupple containing:
+
+            :statusword:  the current value or None if any error.
+            :Ok: A boolean if all went ok or not.
+        """
         index = self.objectIndex['StatusWord']
         subindex = 0
         statusword = self.readObject(index, subindex)
@@ -385,6 +395,14 @@ class SINAMICS:
         return self.writeObject(0x6040, 0, controlword)
 
     def readControlWord(self):
+        """Read controlword from device
+
+        Returns:
+            tupple: A tupple containing:
+
+            :controlword:  the current value or None if any error.
+            :Ok: A boolean if all went ok or not.
+        """
         index = self.objectIndex['ControlWord']
         subindex = 0
         controlword = self.readObject(index,subindex)
@@ -446,31 +464,31 @@ class SINAMICS:
             # shutdown  0xxx x110
             if newState == 'shutdown':
                 # clear bits
-                mask = not ( 1<<7 | 1<<0 )
+                mask = not (1 << 7 | 1 << 0)
                 controlword = controlword & mask
                 # set bits
-                mask  = ( 1<< 2 | 1<<1 )
+                mask = (1 << 2 | 1 << 1)
                 controlword = controlword | mask
                 return self.writeControlWord(controlword)
             # switch on 0xxx x111
             if newState == 'switch on':
                 # clear bits
-                mask = not ( 1<<7 )
+                mask = not (1 << 7)
                 controlword = controlword & mask
                 # set bits
-                mask  = ( 1<< 2 | 1<<1 | 1<<0 )
+                mask = (1 << 2 | 1 << 1 | 1 << 0)
                 controlword = controlword | mask
                 return self.writeControlWord(controlword)
             # disable voltage 0xxx xx0x
             if newState == 'switch on':
                 # clear bits
-                mask = not ( 1<<7 | 1 << 1 )
+                mask = not (1 << 7 | 1 << 1)
                 controlword = controlword & mask
                 return self.writeControlWord(controlword)
             # quick stop 0xxx x01x
             if newState == 'quick stop':
                 # clear bits
-                mask = not ( 1<<7 | 1 << 2)
+                mask = not (1 << 7 | 1 << 2)
                 controlword = controlword & mask
                 # set bits
                 mask = (1 << 1)
@@ -479,25 +497,25 @@ class SINAMICS:
             # disable operation 0xxx 0111
             if newState == 'disable operation':
                 # clear bits
-                mask = not ( 1<<7 | 1 << 3)
+                mask = not (1 << 7 | 1 << 3)
                 controlword = controlword & mask
                 # set bits
-                mask  = ( 1<<2 | 1<< 1 | 1<<0 )
+                mask = (1 << 2 | 1 << 1 | 1 << 0)
                 controlword = controlword | mask
                 return self.writeControlWord(controlword)
             # enable operation x01x 0111
             if newState == 'enable operation':
                 # clear bits
-                mask = not ( 1<<6 | 1<<3 )
+                mask = not (1 << 6 | 1 << 3)
                 controlword = controlword & mask
                 # set bits
-                mask  = ( 1<< 5 | 1 << 2 | 1 << 1 | 1 << 0 )
+                mask = (1 << 5 | 1 << 2 | 1 << 1 | 1 << 0)
                 controlword = controlword | mask
                 return self.writeControlWord(controlword)
             # fault reset 1xxx xxxx
             if newState == 'fault reset':
                 # set bits
-                mask  = ( 1<<7 )
+                mask = (1 << 7)
                 controlword = controlword | mask
                 return self.writeControlWord(controlword)
 
@@ -634,8 +652,10 @@ class SINAMICS:
     def printStatusWord(self):
         """ Print meaning of status word.
 
-        See https://w5.siemens.com/web/cz/cz/corporate/portal/home/produkty_a_sluzby/IBT/mereni_a_regulace/frekvencni_menice/Documents/014_Parameter_Manual_CU230P_V441_en.pdf
-        page 30 for meaning of each bit value.
+        See manual_ page 30 for meaning of each bit value.
+
+        .. _manual: https://w5.siemens.com/web/cz/cz/corporate/portal/home/produkty_a_sluzby/IBT/mereni_a_regulace/frekvencni_menice/Documents/014_Parameter_Manual_CU230P_V441_en.pdf
+
         """
         statusword, Ok = self.readStatusWord()
         if not Ok:
@@ -654,15 +674,15 @@ class SINAMICS:
             print('Bit 12: velocity equal to zero:                                {0}'.format((statusword & (1 << 12))>>12))
             print('Bit 11: I, M, P limit reached:                                 {0}'.format((statusword & (1 << 11))>>11))
             print('Bit 10: Target reached:                                        {0}'.format((statusword & (1 << 10))>>10))
-            print('Bit 09: Control Request:                                       {0}'.format((statusword & (1 << 9 ))>>9))
-            print('Bit 08: Deviation, setpoint/actual speed(1=No, 0=Yes):         {0}'.format((statusword & (1 << 8 ))>>8))
-            print('Bit 07: Alarm:                                                 {0}'.format((statusword & (1 << 7 ))>>7))
-            print('Bit 06: Switch on disable:                                     {0}'.format((statusword & (1 << 6 ))>>6))
-            print('Bit 05: No Quick stop (OFF3):                                  {0}'.format((statusword & (1 << 5 ))>>5))
-            print('Bit 04: No Coast down active (OFF2):                           {0}'.format((statusword & (1 << 4 ))>>4))
-            print('Bit 03: Fault:                                                 {0}'.format((statusword & (1 << 3 ))>>3))
-            print('Bit 02: Operation enable:                                      {0}'.format((statusword & (1 << 2 ))>>2))
-            print('Bit 01: Ready:                                                 {0}'.format((statusword & (1 << 1 ))>>1))
+            print('Bit 09: Control Request:                                       {0}'.format((statusword & (1 << 9))>>9))
+            print('Bit 08: Deviation, setpoint/actual speed(1=No, 0=Yes):         {0}'.format((statusword & (1 << 8))>>8))
+            print('Bit 07: Alarm:                                                 {0}'.format((statusword & (1 << 7))>>7))
+            print('Bit 06: Switch on disable:                                     {0}'.format((statusword & (1 << 6))>>6))
+            print('Bit 05: No Quick stop (OFF3):                                  {0}'.format((statusword & (1 << 5))>>5))
+            print('Bit 04: No Coast down active (OFF2):                           {0}'.format((statusword & (1 << 4))>>4))
+            print('Bit 03: Fault:                                                 {0}'.format((statusword & (1 << 3))>>3))
+            print('Bit 02: Operation enable:                                      {0}'.format((statusword & (1 << 2))>>2))
+            print('Bit 01: Ready:                                                 {0}'.format((statusword & (1 << 1))>>1))
             print('Bit 00: Ready to switch on:                                    {0}'.format(statusword & 1))
         return
 
@@ -930,6 +950,9 @@ class SINAMICS:
         return
 
     def printTorqueSmoothed(self):
+        """
+        Print value of smoothed torque
+        """
         val, ok = self.readParameter(parameter=31)
         if not ok:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
@@ -942,8 +965,7 @@ class SINAMICS:
 
     def printCurrentSmoothed(self):
         """
-        TODO
-        :return:
+        Print value of smoothed current
         """
         val, ok = self.readParameter(parameter=27)
         if not ok:
@@ -954,6 +976,7 @@ class SINAMICS:
         else:
             print('Torque smoothed value is {0}A rms'.format(struct.unpack('<f', val)))
         return
+
 
 def main():
     """Test SINAMICS CANopen communication with some examples.
@@ -971,8 +994,7 @@ def main():
         for var in message:
             print('%s = %d' % (var.name, var.raw))
 
-        # inverter.printCurrentSmoothed()
-        # inverter.printTorqueSmoothed()
+
 
     import argparse
     if (sys.version_info < (3, 0)):
@@ -989,20 +1011,30 @@ def main():
                         type=int, help='bitrate, if applicable', dest='bitrate')
     parser.add_argument('--nodeID', action='store', default=2, type=int,
                         help='Node ID [ must be between 1- 127]', dest='nodeID')
-    parser.add_argument('--objDict', action='store', default=None,
+    parser.add_argument('--objDict', action='store', default='sinamics_s120.eds',
                         type=str, help='Object dictionary file', dest='objDict')
-    args = parser.parse_args()
+    parser.add_argument("--log-level", action="store", type=str,
+                        dest="logLevel", default='info',
+                        help='Log level to be used. See logging module for more info',
+                        choices=['critical', 'error', 'warning', 'info', 'debug'])
 
+    args = parser.parse_args()
+    log_level = {'error': logging.ERROR,
+                 'debug': logging.DEBUG,
+                 'info': logging.INFO,
+                 'warning': logging.WARNING,
+                 'critical': logging.CRITICAL
+                 }
     # set up logging to file - see previous section for more details
     logging.basicConfig(level=logging.DEBUG,
-                    format='[%(asctime)s.%(msecs)03d] [%(name)-20s]: %(levelname)-8s %(message)s',
-                    datefmt='%d-%m-%Y %H:%M:%S',
-                    filename='sinamics.log',
-                    filemode='w')
+                        format='[%(asctime)s.%(msecs)03d] [%(name)-20s]: %(levelname)-8s %(message)s',
+                        datefmt='%d-%m-%Y %H:%M:%S',
+                        filename='sinamics.log',
+                        filemode='w')
 
     # define a Handler which writes INFO messages or higher
     console = logging.StreamHandler()
-    console.setLevel(logging.INFO)
+    console.setLevel(log_level[args.logLevel])
     # set a format which is simpler for console use
     formatter = logging.Formatter('%(name)-20s: %(levelname)-8s %(message)s')
     # tell the handler to use this format
@@ -1082,19 +1114,8 @@ def main():
 
     # testing pdo objects
     inverter.node.pdo.read()
-    # Do some changes to TxPDO4 and RxPDO4
-    # inverter.node.pdo.tx[1].clear()
-    # # add statusword as pdo
-    # inverter.node.pdo.tx[2].add_variable(0x6041, 0, 16)
-    # # add target velocity as pdo
-    # inverter.node.pdo.tx[2].add_variable(0x60FC, 0, 32)
-#    inverter.node.pdo.tx[1].trans_type = 254
-#    inverter.node.pdo.tx[1].event_timer = 2000
-#    inverter.node.pdo.tx[1].enabled = True
 
-    # Save new configuration (node must be in pre-operational)
     inverter.node.nmt.state = 'PRE-OPERATIONAL'
-    # inverter.node.pdo.save()'
 
     inverter.node.pdo.tx[1].clear()
     inverter.node.pdo.tx[2].clear()
@@ -1106,6 +1127,7 @@ def main():
     inverter.node.pdo.rx[3].clear()
     inverter.node.pdo.rx[4].clear()
 
+    # Do some changes to TxPDO2
     inverter.node.pdo.tx[2].clear()
     inverter.node.pdo.tx[2].add_variable(0x6041, 0, 16)
     inverter.node.pdo.tx[2].add_variable(0x606C, 0, 32)
@@ -1113,26 +1135,17 @@ def main():
     # inverter.node.pdo.tx[2].event_timer = 2000
     inverter.node.pdo.tx[2].trans_type = 254
 
-    # pdb.set_trace()
     inverter.changeState('fault reset')
     sleep(0.1)
-    # Save parameters to device and change to pre-operational
-    inverter.node.nmt.state = 'PRE-OPERATIONAL'
+    # Save parameters to device
     inverter.node.pdo.tx[2].save()
 
     # Add callback for message reception
     inverter.node.pdo.tx[2].add_callback(print_message)
 
-    # Start RPDO4 with an interval of 100 ms
-    # inverter.node.rpdo[4][0x2062].phys = 1
-    # inverter.node.pdo.rx[2].start(0.1)
-    # inverter.node.nmt.state = 'OPERATIONAL'
-
     # Set back into operational mode
     inverter.node.nmt.state = 'OPERATIONAL'
-
-    # Transmit every 10 ms
-    # inverter.network.sync.start(2)
+    # TODO change State is failing. to be checked
     sleep(0.1)
     inverter.writeObject(0x6040, 0, (6).to_bytes(2, 'little'))
     # inverter.changeState('shutdown')
@@ -1142,7 +1155,7 @@ def main():
     sleep(0.1)
     inverter.writeObject(0x6040, 0, (15).to_bytes(2, 'little'))
     # inverter.changeState('enable operation')
-    # sleep(20)
+
     try:
         print("Ctrl+C to exit... ")
         while True:
