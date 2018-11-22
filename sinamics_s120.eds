@@ -3485,7 +3485,7 @@ HighLimit=0x7FFFFFFF
 ObjFlags=0x1
 
 [6007]
-ParameterName=Abort_connection_option_code_6007
+ParameterName=Abort_connection_option_code
 ObjectType=0x7
 DataType=0x0003
 AccessType=rw
@@ -3495,7 +3495,7 @@ LowLimit=0x0
 HighLimit=0x3
 
 [6040]
-ParameterName=Controlword_6040
+ParameterName=Controlword
 ObjectType=0x7
 DataType=0x0006
 AccessType=rww
@@ -3506,7 +3506,7 @@ HighLimit=0xFFFF
 ObjFlags=0x1
 
 [6041]
-ParameterName=Statusword_6041
+ParameterName=Statusword
 ObjectType=0x7
 DataType=0x0006
 AccessType=ro
@@ -3517,7 +3517,7 @@ HighLimit=0xFFFF
 ObjFlags=0x0
 
 [6060]
-ParameterName=Modes of Operation_6060
+ParameterName=Modes of Operation
 ObjectType=0x7
 DataType=0x0002
 AccessType=rw
@@ -3528,7 +3528,7 @@ HighLimit=0x03
 ObjFlags=0x1
 
 [6061]
-ParameterName=Modes of Operation Display_6061
+ParameterName=Modes of Operation Display
 ObjectType=0x7
 DataType=0x0002
 AccessType=ro
@@ -3539,7 +3539,7 @@ HighLimit=0x03
 ObjFlags=0x0
 
 [6063]
-ParameterName=Position Actual Value_6063
+ParameterName=Position Actual Value
 ObjectType=0x7
 DataType=0x0004
 AccessType=ro
@@ -3550,7 +3550,7 @@ HighLimit=2147483647
 ObjFlags=0x0
 
 [6069]
-ParameterName=Velocity Sensor Actual Value 6069
+ParameterName=Velocity Sensor Actual Value
 ObjectType=0x7
 DataType=0x0004
 AccessType=ro
@@ -3561,7 +3561,7 @@ HighLimit=2147483647
 ObjFlags=0x0
 
 [606b]
-ParameterName=Velocity Demand Value 606b
+ParameterName=Velocity Demand Value
 ObjectType=0x7
 DataType=0x0004
 AccessType=ro
@@ -3572,7 +3572,7 @@ HighLimit=2147483647
 ObjFlags=0x0
 
 [606c]
-ParameterName=Velocity Actual Value 606c
+ParameterName=Velocity Actual Value
 ObjectType=0x7
 DataType=0x0004
 AccessType=ro
@@ -3583,7 +3583,7 @@ HighLimit=2147483647
 ObjFlags=0x0
 
 [6071]
-ParameterName=Target Torque 6071
+ParameterName=Target Torque
 ObjectType=0x7
 DataType=0x0003
 AccessType=rww
@@ -3594,7 +3594,7 @@ HighLimit=32767
 ObjFlags=0x1
 
 [6072]
-ParameterName=Max Torque 6072
+ParameterName=Max Torque
 ObjectType=0x7
 DataType=0x0008
 AccessType=rw
@@ -3603,7 +3603,7 @@ LowLimit=0.000000
 HighLimit=100000.0
 
 [6074]
-ParameterName=Torque Demand Value 6074
+ParameterName=Torque Demand Value
 ObjectType=0x7
 DataType=0x0003
 AccessType=ro
@@ -3614,7 +3614,7 @@ HighLimit=32767
 ObjFlags=0x0
 
 [6083]
-ParameterName=Profile acceleration 6083
+ParameterName=Profile acceleration
 ObjectType=0x7
 DataType=0x0008
 AccessType=rw
@@ -3622,21 +3622,21 @@ PDOMapping=0
 LowLimit=0.000000
 
 [6084]
-ParameterName=Profile deceleration 6084
+ParameterName=Profile deceleration
 ObjectType=0x7
 DataType=0x0008
 AccessType=rw
 PDOMapping=0
 
 [6085]
-ParameterName=Quick Stop Deceleration 6085
+ParameterName=Quick Stop Deceleration
 ObjectType=0x7
 DataType=0x0008
 AccessType=rw
 PDOMapping=0
 
 [6086]
-ParameterName=Motion_profile_type 6086
+ParameterName=Motion_profile_type
 ObjectType=0x7
 DataType=0x0003
 AccessType=rw
@@ -3646,7 +3646,7 @@ LowLimit=0x0
 HighLimit=0x3
 
 [6094]
-ParameterName=Velocity Encoder Factor 6094
+ParameterName=Velocity Encoder Factor
 ObjectType=0x8
 SubNumber=3
 
@@ -3679,7 +3679,7 @@ LowLimit=0x1
 HighLimit=0xFFFFFFFF
 
 [60ff]
-ParameterName=Target Velocity 60ff
+ParameterName=Target Velocity
 ObjectType=0x7
 DataType=0x0004
 AccessType=rww
@@ -3690,7 +3690,7 @@ HighLimit=2147483647
 ObjFlags=0x1
 
 [6502]
-ParameterName=Supported Drive Modes 6502
+ParameterName=Supported Drive Modes
 ObjectType=0x7
 DataType=0x0007
 AccessType=ro
@@ -3700,7 +3700,7 @@ LowLimit=0x4
 HighLimit=0x4
 
 [6504]
-ParameterName=Drive Manufacturer 6504
+ParameterName=Drive Manufacturer
 ObjectType=0x7
 DataType=0x0009
 AccessType=const
@@ -3708,7 +3708,7 @@ DefaultValue=SIEMENS
 PDOMapping=0
 
 [67ff]
-ParameterName=Single Device Type 67ff
+ParameterName=Single Device Type
 ObjectType=0x7
 DataType=0x0007
 AccessType=ro

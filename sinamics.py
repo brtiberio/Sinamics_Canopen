@@ -27,180 +27,181 @@ import logging
 from time import sleep
 import struct
 from can import CanError  # TODO restudy need of this import since canopen already use it
+
+
 # import pdb
-#import pydevd
-#pydevd.settrace('192.168.1.181', port=9000, stdoutToServer=True, stderrToServer=True)
+# import pydevd
+# pydevd.settrace('192.168.1.181', port=9000, stdoutToServer=True, stderrToServer=True)
 
 
 class SINAMICS:
-
     network = None
     logger = None
     _connected = False
     # If EDS file is present, this is not necessary, all codes can be gotten
     # from object dicionary.
-    objectIndex = {# control unit objects, independent of drive:
-                   'Device Type': 0x1000,
-                   'Error Register': 0x1001,
-                   'Error History': 0x1003,
-                   'COB-ID SYNC Message': 0x1005,
-                   'Device Name': 0x1008,
-                   'Software Version': 0x100A,
-                   'Guard Time': 0x100C,
-                   'Life Time Factor': 0x100D,
-                   'Store Parameters': 0x1010,
-                   'Restore Default Parameters': 0x1011,
-                   'COB-ID Emergency Object': 0x1014,
-                   # 'Consumer Heartbeat Time': 0x1016,
-                   'Producer Heartbeat Time': 0x1017,
-                   'Identity Object': 0x1018,
-                   # 'Verify configuration': 0x1020,
-                   'Module List': 0x1027,
-                   'Error Behavior': 0x1029,
-                   'Server SDO Default Parameter': 0x1200,
-                   'Server SDO CU DO Parameter': 0x1201,
-                   # other communication objects
-                   'Server SDO Drive DO 1 Parameter': 0x1202,
-                   'Server SDO Drive DO 2 Parameter': 0x1203,
-                   'Server SDO Drive DO 3 Parameter': 0x1204,
-                   'Server SDO Drive DO 4 Parameter': 0x1205,
-                   'Server SDO Drive DO 5 Parameter': 0x1206,
-                   'Server SDO Drive DO 6 Parameter': 0x1207,
-                   'Server SDO Drive DO 7 Parameter': 0x1208,
-                   'Server SDO Drive DO 8 Parameter': 0x1209,
-                   # Drive dependent objects
-                   'Receive PDO 1 Parameter': 0x1400,
-                   'Receive PDO 2 Parameter': 0x1401,
-                   'Receive PDO 3 Parameter': 0x1402,
-                   'Receive PDO 4 Parameter': 0x1403,
-                   'Receive PDO 5 Parameter': 0x1404,
-                   'Receive PDO 6 Parameter': 0x1405,
-                   'Receive PDO 7 Parameter': 0x1406,
-                   'Receive PDO 8 Parameter': 0x1407,
-                   'Receive PDO 1 Mapping': 0x1600,
-                   'Receive PDO 2 Mapping': 0x1601,
-                   'Receive PDO 3 Mapping': 0x1602,
-                   'Receive PDO 4 Mapping': 0x1603,
-                   'Receive PDO 5 Mapping': 0x1604,
-                   'Receive PDO 6 Mapping': 0x1605,
-                   'Receive PDO 7 Mapping': 0x1606,
-                   'Receive PDO 8 Mapping': 0x1607,
-                   'Transmit PDO 1 Parameter': 0x1800,
-                   'Transmit PDO 2 Parameter': 0x1801,
-                   'Transmit PDO 3 Parameter': 0x1802,
-                   'Transmit PDO 4 Parameter': 0x1803,
-                   'Transmit PDO 5 Parameter': 0x1804,
-                   'Transmit PDO 6 Parameter': 0x1805,
-                   'Transmit PDO 7 Parameter': 0x1806,
-                   'Transmit PDO 8 Parameter': 0x1807,
-                   'Transmit PDO 1 Mapping': 0x1A00,
-                   'Transmit PDO 2 Mapping': 0x1A01,
-                   'Transmit PDO 3 Mapping': 0x1A02,
-                   'Transmit PDO 4 Mapping': 0x1A03,
-                   'Transmit PDO 5 Mapping': 0x1A04,
-                   'Transmit PDO 6 Mapping': 0x1A05,
-                   'Transmit PDO 7 Mapping': 0x1A06,
-                   'Transmit PDO 8 Mapping': 0x1A07,
-                   'Current limit': 0x2280,
-                   'Technology controller enable': 0x2898,
-                   'Technology controller filter time constant': 0x28D9,
-                   'Technology controller differentiation time constant': 0x28E2,
-                   'Technology controller proportional gain': 0x28E8,
-                   'Technology controller maximum limiting': 0x28F3,
-                   'Technology controller minimum limiting': 0x28F4,
-                   'Output frequency': 0x2042,
-                   'Speed setpoint smoothed': 0x2014,
-                   'Output frequency smoothed': 0x2018,
-                   'Output voltage smoothed': 0x2019,
-                   'DC link voltage smoothed': 0x201A,
-                   'Absolute actual current smoothed': 0x201B,
-                   'Actual torque smoothed': 0x201F,
-                   'Actual active power smoothed': 0x2020,
-                   'Motor temperature': 0x2023,
-                   'Power unit temperatures': 0x2025,
-                   'Energy display': 0x2027,
-                   'Command Data Set CDS effective': 0x2032,
-                   'Statusword 2': 0x2035,
-                   'Controlword 1': 0x2036,
-                   'CU digital input status': 0x22D2,
-                   'CU digital output status': 0x22EB,
-                   'CU analog inputs voltage/current': 0x22F0,
-                   'CU analog outputs voltage/current': 0x2306,
-                   'Fault number': 0x23B3,
-                   'Actual pulse frequency': 0x2709,
-                   'Alarm number': 0x283E,
-                   'Technology controller setpoint after ramp': 0x28D4,
-                   'Technology controller actual value after filter': 0x28DA,
-                   'Technology controller output signal': 0x28F6,
-                   'Technology controller ramp-up time': 0x28D1,
-                   'Technology controller ramp-down time': 0x28D2,
-                   'Technology controller integral action time': 0x28ED,
-                   # DS402 profile
-                   # device control
-                   'Abort connection option code': 0x6007,
-                   'ControlWord': 0x6040,
-                   'StatusWord': 0x6041,
-                   'Stop option code': 0x605D,
-                   'Modes of Operation': 0x6060,
-                   'Modes of Operation Display': 0x6061,
-                   'Supported drive modes': 0x6502,
-                   'Drive manufacturer': 0x6504,
-                   'Single device type': 0x67FF,
-                   # Factor group
-                   'Velocity encoder': 0x6094,
-                   # profile velocity mode
-                   # TODO
-                   'TargetVelocity': 0x60FF,
-                   # profile torque mode
-                   # TODO
-                   # velocity mode
-                   'vl target velocity': 0x6042,
-                   'vl velocity demand': 0x6043,
-                   'vl velocity actual value:': 0x6044,
-                   'vl velocity limits': 0x6046,
-                   'vl velocity acceleration': 0x6048}
+    objectIndex = {  # control unit objects, independent of drive:
+        'Device Type': 0x1000,
+        'Error Register': 0x1001,
+        'Error History': 0x1003,
+        'COB-ID SYNC Message': 0x1005,
+        'Device Name': 0x1008,
+        'Software Version': 0x100A,
+        'Guard Time': 0x100C,
+        'Life Time Factor': 0x100D,
+        'Store Parameters': 0x1010,
+        'Restore Default Parameters': 0x1011,
+        'COB-ID Emergency Object': 0x1014,
+        # 'Consumer Heartbeat Time': 0x1016,
+        'Producer Heartbeat Time': 0x1017,
+        'Identity Object': 0x1018,
+        # 'Verify configuration': 0x1020,
+        'Module List': 0x1027,
+        'Error Behavior': 0x1029,
+        'Server SDO Default Parameter': 0x1200,
+        'Server SDO CU DO Parameter': 0x1201,
+        # other communication objects
+        'Server SDO Drive DO 1 Parameter': 0x1202,
+        'Server SDO Drive DO 2 Parameter': 0x1203,
+        'Server SDO Drive DO 3 Parameter': 0x1204,
+        'Server SDO Drive DO 4 Parameter': 0x1205,
+        'Server SDO Drive DO 5 Parameter': 0x1206,
+        'Server SDO Drive DO 6 Parameter': 0x1207,
+        'Server SDO Drive DO 7 Parameter': 0x1208,
+        'Server SDO Drive DO 8 Parameter': 0x1209,
+        # Drive dependent objects
+        'Receive PDO 1 Parameter': 0x1400,
+        'Receive PDO 2 Parameter': 0x1401,
+        'Receive PDO 3 Parameter': 0x1402,
+        'Receive PDO 4 Parameter': 0x1403,
+        'Receive PDO 5 Parameter': 0x1404,
+        'Receive PDO 6 Parameter': 0x1405,
+        'Receive PDO 7 Parameter': 0x1406,
+        'Receive PDO 8 Parameter': 0x1407,
+        'Receive PDO 1 Mapping': 0x1600,
+        'Receive PDO 2 Mapping': 0x1601,
+        'Receive PDO 3 Mapping': 0x1602,
+        'Receive PDO 4 Mapping': 0x1603,
+        'Receive PDO 5 Mapping': 0x1604,
+        'Receive PDO 6 Mapping': 0x1605,
+        'Receive PDO 7 Mapping': 0x1606,
+        'Receive PDO 8 Mapping': 0x1607,
+        'Transmit PDO 1 Parameter': 0x1800,
+        'Transmit PDO 2 Parameter': 0x1801,
+        'Transmit PDO 3 Parameter': 0x1802,
+        'Transmit PDO 4 Parameter': 0x1803,
+        'Transmit PDO 5 Parameter': 0x1804,
+        'Transmit PDO 6 Parameter': 0x1805,
+        'Transmit PDO 7 Parameter': 0x1806,
+        'Transmit PDO 8 Parameter': 0x1807,
+        'Transmit PDO 1 Mapping': 0x1A00,
+        'Transmit PDO 2 Mapping': 0x1A01,
+        'Transmit PDO 3 Mapping': 0x1A02,
+        'Transmit PDO 4 Mapping': 0x1A03,
+        'Transmit PDO 5 Mapping': 0x1A04,
+        'Transmit PDO 6 Mapping': 0x1A05,
+        'Transmit PDO 7 Mapping': 0x1A06,
+        'Transmit PDO 8 Mapping': 0x1A07,
+        'Current limit': 0x2280,
+        'Technology controller enable': 0x2898,
+        'Technology controller filter time constant': 0x28D9,
+        'Technology controller differentiation time constant': 0x28E2,
+        'Technology controller proportional gain': 0x28E8,
+        'Technology controller maximum limiting': 0x28F3,
+        'Technology controller minimum limiting': 0x28F4,
+        'Output frequency': 0x2042,
+        'Speed setpoint smoothed': 0x2014,
+        'Output frequency smoothed': 0x2018,
+        'Output voltage smoothed': 0x2019,
+        'DC link voltage smoothed': 0x201A,
+        'Absolute actual current smoothed': 0x201B,
+        'Actual torque smoothed': 0x201F,
+        'Actual active power smoothed': 0x2020,
+        'Motor temperature': 0x2023,
+        'Power unit temperatures': 0x2025,
+        'Energy display': 0x2027,
+        'Command Data Set CDS effective': 0x2032,
+        'Statusword 2': 0x2035,
+        'Controlword 1': 0x2036,
+        'CU digital input status': 0x22D2,
+        'CU digital output status': 0x22EB,
+        'CU analog inputs voltage/current': 0x22F0,
+        'CU analog outputs voltage/current': 0x2306,
+        'Fault number': 0x23B3,
+        'Actual pulse frequency': 0x2709,
+        'Alarm number': 0x283E,
+        'Technology controller setpoint after ramp': 0x28D4,
+        'Technology controller actual value after filter': 0x28DA,
+        'Technology controller output signal': 0x28F6,
+        'Technology controller ramp-up time': 0x28D1,
+        'Technology controller ramp-down time': 0x28D2,
+        'Technology controller integral action time': 0x28ED,
+        # DS402 profile
+        # device control
+        'Abort connection option code': 0x6007,
+        'ControlWord': 0x6040,
+        'StatusWord': 0x6041,
+        'Stop option code': 0x605D,
+        'Modes of Operation': 0x6060,
+        'Modes of Operation Display': 0x6061,
+        'Supported drive modes': 0x6502,
+        'Drive manufacturer': 0x6504,
+        'Single device type': 0x67FF,
+        # Factor group
+        'Velocity encoder': 0x6094,
+        # profile velocity mode
+        # TODO
+        'TargetVelocity': 0x60FF,
+        # profile torque mode
+        # TODO
+        # velocity mode
+        'vl target velocity': 0x6042,
+        'vl velocity demand': 0x6043,
+        'vl velocity actual value:': 0x6044,
+        'vl velocity limits': 0x6046,
+        'vl velocity acceleration': 0x6048}
     # CANopen defined error codes and Maxon codes also
     # AbortCode: Description
-    errorIndex = {0x00000000:  'Error code: no error',
+    errorIndex = {0x00000000: 'Error code: no error',
                   # 0x050x xxxx
-                  0x05030000:  'Error code: toogle bit not alternated',
-                  0x05040000:  'Error code: SDO protocol timeout',
-                  0x05040001:  'Error code: Client/server command specifier not valid or unknown',
-                  0x05040002:  'Error code: invalide block size',
-                  0x05040003:  'Error code: invalide sequence number',
-                  0x05040004:  'Error code: CRC error',
-                  0x05040005:  'Error code: out of memory',
+                  0x05030000: 'Error code: toogle bit not alternated',
+                  0x05040000: 'Error code: SDO protocol timeout',
+                  0x05040001: 'Error code: Client/server command specifier not valid or unknown',
+                  0x05040002: 'Error code: invalide block size',
+                  0x05040003: 'Error code: invalide sequence number',
+                  0x05040004: 'Error code: CRC error',
+                  0x05040005: 'Error code: out of memory',
                   # 0x060x xxxx
-                  0x06010000:  'Error code: Unsupported access to an object',
-                  0x06010001:  'Error code: Attempt to read a write-only object',
-                  0x06010002:  'Error code: Attempt to write a read-only object',
-                  0x06020000:  'Error code: object does not exist',
-                  0x06040041:  'Error code: object can not be mapped to the PDO',
-                  0x06040042:  'Error code: the number and length of the objects to be mapped would exceed PDO length',
-                  0x06040043:  'Error code: general parameter incompatibility',
-                  0x06040047:  'Error code: general internal incompatibility in the device',
-                  0x06060000:  'Error code: access failed due to an hardware error',
-                  0x06070010:  'Error code: data type does not match, length of service parameter does not match',
-                  0x06070012:  'Error code: data type does not match, length of service parameter too high',
-                  0x06070013:  'Error code: data type does not match, length of service parameter too low',
-                  0x06090011:  'Error code: subindex does not exist',
-                  0x06090030:  'Error code: value range of parameter exeeded',
-                  0x06090031:  'Error code: value of parameter written is too high',
-                  0x06090032:  'Error code: value of parameter written is too low',
-                  0x06090036:  'Error code: maximum value is less than minimum value',
-                  0x060A0023:  'Error code: resource not available: SDO connection',
+                  0x06010000: 'Error code: Unsupported access to an object',
+                  0x06010001: 'Error code: Attempt to read a write-only object',
+                  0x06010002: 'Error code: Attempt to write a read-only object',
+                  0x06020000: 'Error code: object does not exist',
+                  0x06040041: 'Error code: object can not be mapped to the PDO',
+                  0x06040042: 'Error code: the number and length of the objects to be mapped would exceed PDO length',
+                  0x06040043: 'Error code: general parameter incompatibility',
+                  0x06040047: 'Error code: general internal incompatibility in the device',
+                  0x06060000: 'Error code: access failed due to an hardware error',
+                  0x06070010: 'Error code: data type does not match, length of service parameter does not match',
+                  0x06070012: 'Error code: data type does not match, length of service parameter too high',
+                  0x06070013: 'Error code: data type does not match, length of service parameter too low',
+                  0x06090011: 'Error code: subindex does not exist',
+                  0x06090030: 'Error code: value range of parameter exeeded',
+                  0x06090031: 'Error code: value of parameter written is too high',
+                  0x06090032: 'Error code: value of parameter written is too low',
+                  0x06090036: 'Error code: maximum value is less than minimum value',
+                  0x060A0023: 'Error code: resource not available: SDO connection',
                   # 0x0800 xxxx
-                  0x08000000:  'Error code: General error',
-                  0x08000020:  'Error code: Data cannot be transferred or stored to the application',
-                  0x08000021:  'Error code: Data cannot be transferred or stored to the application because of local control',
-                  0x08000022:  'Error code: Wrong Device State. Data can not be transfered',
-                  0x08000023:  'Error code: Object dictionary dynamic generation failed or no object dictionary present',
+                  0x08000000: 'Error code: General error',
+                  0x08000020: 'Error code: Data cannot be transferred or stored to the application',
+                  0x08000021: 'Error code: Data cannot be transferred or stored to the application because of local control',
+                  0x08000022: 'Error code: Wrong Device State. Data can not be transfered',
+                  0x08000023: 'Error code: Object dictionary dynamic generation failed or no object dictionary present',
                   # Maxon defined error codes
-                  0x0f00ffc0:  'Error code: wrong NMT state',
-                  0x0f00ffbf:  'Error code: rs232 command illegeal',
-                  0x0f00ffbe:  'Error code: password incorrect',
-                  0x0f00ffbc:  'Error code: device not in service mode',
-                  0x0f00ffB9:  'Error code: error in Node-ID'
+                  0x0f00ffc0: 'Error code: wrong NMT state',
+                  0x0f00ffbf: 'Error code: rs232 command illegeal',
+                  0x0f00ffbe: 'Error code: password incorrect',
+                  0x0f00ffbc: 'Error code: device not in service mode',
+                  0x0f00ffB9: 'Error code: error in Node-ID'
                   }
     # dictionary describing opMode
     opModes = {0: 'No mode assigned', 3: 'Profile Velocity Mode', -1: 'Manufacturer-specific OP1',
@@ -242,9 +243,9 @@ class SINAMICS:
             # do nothing
             return
         self.logger.info('[{0}:{1}] {2}'.format(
-                self.__class__.__name__,
-                sys._getframe(1).f_code.co_name,
-                message))
+            self.__class__.__name__,
+            sys._getframe(1).f_code.co_name,
+            message))
         return
 
     def logDebug(self, message=None):
@@ -265,9 +266,9 @@ class SINAMICS:
             return
 
         self.logger.debug('[{0}:{1}] {2}'.format(
-                self.__class__.__name__,
-                sys._getframe(1).f_code.co_name,
-                message))
+            self.__class__.__name__,
+            sys._getframe(1).f_code.co_name,
+            message))
         return
 
     def begin(self, nodeID, _channel='can0', _bustype='socketcan', objectDictionary=None):
@@ -372,13 +373,12 @@ class SINAMICS:
         # failded to request?
         if not statusword:
             self.logInfo('Error trying to read {0} statusword'.format(
-            self.__class__.__name__))
+                self.__class__.__name__))
             return statusword, False
 
         # return statusword as an int type
         statusword = int.from_bytes(statusword, 'little')
         return statusword, True
-
 
     def writeControlWord(self, controlword):
         """Send controlword to device
@@ -405,11 +405,11 @@ class SINAMICS:
         """
         index = self.objectIndex['ControlWord']
         subindex = 0
-        controlword = self.readObject(index,subindex)
+        controlword = self.readObject(index, subindex)
         # failded to request?
         if not controlword:
             self.logInfo('Error trying to read {0} controlword'.format(
-            self.__class__.__name__))
+                self.__class__.__name__))
             return controlword, False
 
         # return controlword as an int type
@@ -464,7 +464,7 @@ class SINAMICS:
             # shutdown  0xxx x110
             if newState == 'shutdown':
                 # clear bits
-                mask = not (1 << 7 | 1 << 0)
+                mask = ~ (1 << 7 | 1 << 0)
                 controlword = controlword & mask
                 # set bits
                 mask = (1 << 2 | 1 << 1)
@@ -473,7 +473,7 @@ class SINAMICS:
             # switch on 0xxx x111
             if newState == 'switch on':
                 # clear bits
-                mask = not (1 << 7)
+                mask = ~ (1 << 7)
                 controlword = controlword & mask
                 # set bits
                 mask = (1 << 2 | 1 << 1 | 1 << 0)
@@ -482,13 +482,13 @@ class SINAMICS:
             # disable voltage 0xxx xx0x
             if newState == 'switch on':
                 # clear bits
-                mask = not (1 << 7 | 1 << 1)
+                mask = ~ (1 << 7 | 1 << 1)
                 controlword = controlword & mask
                 return self.writeControlWord(controlword)
             # quick stop 0xxx x01x
             if newState == 'quick stop':
                 # clear bits
-                mask = not (1 << 7 | 1 << 2)
+                mask = ~ (1 << 7 | 1 << 2)
                 controlword = controlword & mask
                 # set bits
                 mask = (1 << 1)
@@ -497,19 +497,19 @@ class SINAMICS:
             # disable operation 0xxx 0111
             if newState == 'disable operation':
                 # clear bits
-                mask = not (1 << 7 | 1 << 3)
+                mask = ~ (1 << 7 | 1 << 3)
                 controlword = controlword & mask
                 # set bits
                 mask = (1 << 2 | 1 << 1 | 1 << 0)
                 controlword = controlword | mask
                 return self.writeControlWord(controlword)
-            # enable operation x01x 0111
+            # enable operation 0xxx 1111
             if newState == 'enable operation':
                 # clear bits
-                mask = not (1 << 6 | 1 << 3)
+                mask = ~ (1 << 7)
                 controlword = controlword & mask
                 # set bits
-                mask = (1 << 5 | 1 << 2 | 1 << 1 | 1 << 0)
+                mask = (1 << 3 | 1 << 2 | 1 << 1 | 1 << 0)
                 controlword = controlword | mask
                 return self.writeControlWord(controlword)
             # fault reset 1xxx xxxx
@@ -565,83 +565,83 @@ class SINAMICS:
             # state 'start' (0)
             # statusWord == x0xx xxx0  x000 0000
             bitmask = 0b0100000101111111
-            if(bitmask & statusword == 0):
+            if (bitmask & statusword == 0):
                 ID = 0
                 return ID
 
-        # state 'not ready to switch on' (1)
-        # statusWord == xxxx xxxx  x0xx 0000
+            # state 'not ready to switch on' (1)
+            # statusWord == xxxx xxxx  x0xx 0000
             bitmask = 0b0000000001001111
             if (bitmask & statusword == 0):
                 ID = 1
                 return ID
 
             # state 'switch on disabled' (2)
-            # statusWord == xxxx xxxx  x1xx 0000
-            bitmask = 0b0000000001001111
-            if(bitmask & statusword == 64):
+            # statusWord == xxxx xxxx  x1xx x000
+            bitmask = 0b0000000001000111
+            if (bitmask & statusword == 64):
                 ID = 2
                 return ID
 
             # state 'ready to switch on' (3)
-            # statusWord == xxxx xxxx  x01x 0001
-            bitmask = 0b0000000001101111
-            if(bitmask & statusword == 33):
+            # statusWord == xxxx xxxx  x011 0001
+            bitmask = 0b0000000001111111
+            if (bitmask & statusword == 49):
                 ID = 3
                 return ID
 
             # state 'switched on' (4)
-            # statusWord == x0xx xxx1  x010 0011
-            bitmask = 0b0000000101111111
-            if(bitmask & statusword == 291):
+            # statusWord == xxxx xxxx  x011 0011
+            bitmask = 0b0000000001111111
+            if (bitmask & statusword == 51):
                 ID = 4
                 return ID
 
             # state 'refresh' (5)
             # statusWord == x1xx xxx1  x010 0011
             bitmask = 0b0100000101111111
-            if(bitmask & statusword == 16675):
+            if (bitmask & statusword == 16675):
                 ID = 5
                 return ID
 
             # state 'measure init' (6)
             # statusWord == x1xx xxx1  x011 0011
             bitmask = 0b0100000101111111
-            if(bitmask & statusword == 16691):
+            if (bitmask & statusword == 16691):
                 ID = 6
                 return ID
             # state 'operation enable' (7)
-            # statusWord == x0xx xxx1  x011 0111
-            bitmask = 0b0100000101111111
-            if(bitmask & statusword == 311):
+            # statusWord == xxxx xxxx  x011 0111
+            bitmask = 0b0000000001111111
+            if (bitmask & statusword == 55):
                 ID = 7
                 return ID
 
             # state 'Quick Stop Active' (8)
             # statusWord == x0xx xxx1  x001 0111
             bitmask = 0b0100000101111111
-            if(bitmask & statusword == 279):
+            if (bitmask & statusword == 279):
                 ID = 8
                 return ID
 
             # state 'fault reaction active (disabled)' (9)
             # statusWord == x0xx xxx1  x000 1111
             bitmask = 0b0100000101111111
-            if(bitmask & statusword == 271):
+            if (bitmask & statusword == 271):
                 ID = 9
                 return ID
 
             # state 'fault reaction active (enabled)' (10)
-            # statusWord == x0xx xxx1  x001 1111
-            bitmask = 0b0100000101111111
-            if(bitmask & statusword == 287):
+            # statusWord == xxxx xxxx  x0xx 1xx1
+            bitmask = 0b0000000001001001
+            if (bitmask & statusword == 73):
                 ID = 10
                 return ID
 
             # state 'fault' (11)
-            # statusWord == x0xx xxx1  x000 1000
-            bitmask = 0b0100000101111111
-            if(bitmask & statusword == 264):
+            # statusWord == xxxx xxxx  xxxx 1xxx
+            bitmask = 0b0000000000001000
+            if (bitmask & statusword == 8):
                 ID = 11
                 return ID
 
@@ -668,21 +668,36 @@ class SINAMICS:
                 self.__class__.__name__,
                 sys._getframe().f_code.co_name,
                 statusword))
-            print('Bit 15: Alarm drive converter overload (1=No, 0=Yes):          {0}'.format((statusword & (1 << 15))>>15))
-            print('Bit 14: Motor rotates forwards:                                {0}'.format((statusword & (1 << 14))>>14))
-            print('Bit 13: Reserved:                                              {0}'.format((statusword & (1 << 13))>>13))
-            print('Bit 12: velocity equal to zero:                                {0}'.format((statusword & (1 << 12))>>12))
-            print('Bit 11: I, M, P limit reached:                                 {0}'.format((statusword & (1 << 11))>>11))
-            print('Bit 10: Target reached:                                        {0}'.format((statusword & (1 << 10))>>10))
-            print('Bit 09: Control Request:                                       {0}'.format((statusword & (1 << 9))>>9))
-            print('Bit 08: Deviation, setpoint/actual speed(1=No, 0=Yes):         {0}'.format((statusword & (1 << 8))>>8))
-            print('Bit 07: Alarm:                                                 {0}'.format((statusword & (1 << 7))>>7))
-            print('Bit 06: Switch on disable:                                     {0}'.format((statusword & (1 << 6))>>6))
-            print('Bit 05: No Quick stop (OFF3):                                  {0}'.format((statusword & (1 << 5))>>5))
-            print('Bit 04: No Coast down active (OFF2):                           {0}'.format((statusword & (1 << 4))>>4))
-            print('Bit 03: Fault:                                                 {0}'.format((statusword & (1 << 3))>>3))
-            print('Bit 02: Operation enable:                                      {0}'.format((statusword & (1 << 2))>>2))
-            print('Bit 01: Ready:                                                 {0}'.format((statusword & (1 << 1))>>1))
+            print('Bit 15: Alarm drive converter overload (1=No, 0=Yes):          {0}'.format(
+                (statusword & (1 << 15)) >> 15))
+            print('Bit 14: Motor rotates forwards:                                {0}'.format(
+                (statusword & (1 << 14)) >> 14))
+            print('Bit 13: Reserved:                                              {0}'.format(
+                (statusword & (1 << 13)) >> 13))
+            print('Bit 12: velocity equal to zero:                                {0}'.format(
+                (statusword & (1 << 12)) >> 12))
+            print('Bit 11: I, M, P limit reached:                                 {0}'.format(
+                (statusword & (1 << 11)) >> 11))
+            print('Bit 10: Target reached:                                        {0}'.format(
+                (statusword & (1 << 10)) >> 10))
+            print('Bit 09: Control Request:                                       {0}'.format(
+                (statusword & (1 << 9)) >> 9))
+            print('Bit 08: Deviation, setpoint/actual speed(1=No, 0=Yes):         {0}'.format(
+                (statusword & (1 << 8)) >> 8))
+            print('Bit 07: Alarm:                                                 {0}'.format(
+                (statusword & (1 << 7)) >> 7))
+            print('Bit 06: Switch on disable:                                     {0}'.format(
+                (statusword & (1 << 6)) >> 6))
+            print('Bit 05: No Quick stop (OFF3):                                  {0}'.format(
+                (statusword & (1 << 5)) >> 5))
+            print('Bit 04: No Coast down active (OFF2):                           {0}'.format(
+                (statusword & (1 << 4)) >> 4))
+            print('Bit 03: Fault:                                                 {0}'.format(
+                (statusword & (1 << 3)) >> 3))
+            print('Bit 02: Operation enable:                                      {0}'.format(
+                (statusword & (1 << 2)) >> 2))
+            print('Bit 01: Ready:                                                 {0}'.format(
+                (statusword & (1 << 1)) >> 1))
             print('Bit 00: Ready to switch on:                                    {0}'.format(statusword & 1))
         return
 
@@ -707,21 +722,21 @@ class SINAMICS:
             self.__class__.__name__,
             sys._getframe().f_code.co_name,
             controlword))
-        print('Bit 15: CDS bit 0:                                      {0}'.format((controlword & (1 << 15 ))>>15))
-        print('Bit 14: Motorized potentiometer lower:                  {0}'.format((controlword & (1 << 14 ))>>14))
-        print('Bit 13: Motorized potentiometer raise:                  {0}'.format((controlword & (1 << 13 ))>>13))
-        print('Bit 12: Can be assigned to command:                     {0}'.format((controlword & (1 << 12 ))>>12))
-        print('Bit 11: Direction of rotation [0 Foward | 1 Reverse]:   {0}'.format((controlword & (1 << 11 ))>>11))
-        print('Bit 10: Master ctrl by PLC:                             {0}'.format((controlword & (1 << 10 ))>>10))
-        print('Bit 09: Jog bit 1:                                      {0}'.format((controlword & (1 << 9 ))>>9))
-        print('Bit 08: Jog bit 0:                                      {0}'.format((controlword & (1 << 8 ))>>8))
-        print('Bit 07: Fault reset:                                    {0}'.format((controlword & (1 << 7 ))>>7))
-        print('Bit 06: Speed setpoint enable:                          {0}'.format((controlword & (1 << 6 ))>>6))
-        print('Bit 05: Continue ramp-function generator:               {0}'.format((controlword & (1 << 5 ))>>5))
-        print('Bit 04: Ramp-function generator enable:                 {0}'.format((controlword & (1 << 4 ))>>4))
-        print('Bit 03: Enable operation:                               {0}'.format((controlword & (1 << 3 ))>>3))
-        print('Bit 02: OC / OFF3 Do not activate quick stop            {0}'.format((controlword & (1 << 2 ))>>2))
-        print('Bit 01: OC / OFF2 Do not activate coast:                {0}'.format((controlword & (1 << 1 ))>>1))
+        print('Bit 15: CDS bit 0:                                      {0}'.format((controlword & (1 << 15)) >> 15))
+        print('Bit 14: Motorized potentiometer lower:                  {0}'.format((controlword & (1 << 14)) >> 14))
+        print('Bit 13: Motorized potentiometer raise:                  {0}'.format((controlword & (1 << 13)) >> 13))
+        print('Bit 12: Can be assigned to command:                     {0}'.format((controlword & (1 << 12)) >> 12))
+        print('Bit 11: Direction of rotation [0 Foward | 1 Reverse]:   {0}'.format((controlword & (1 << 11)) >> 11))
+        print('Bit 10: Master ctrl by PLC:                             {0}'.format((controlword & (1 << 10)) >> 10))
+        print('Bit 09: Jog bit 1:                                      {0}'.format((controlword & (1 << 9)) >> 9))
+        print('Bit 08: Jog bit 0:                                      {0}'.format((controlword & (1 << 8)) >> 8))
+        print('Bit 07: Fault reset:                                    {0}'.format((controlword & (1 << 7)) >> 7))
+        print('Bit 06: Speed setpoint enable:                          {0}'.format((controlword & (1 << 6)) >> 6))
+        print('Bit 05: Continue ramp-function generator:               {0}'.format((controlword & (1 << 5)) >> 5))
+        print('Bit 04: Ramp-function generator enable:                 {0}'.format((controlword & (1 << 4)) >> 4))
+        print('Bit 03: Enable operation:                               {0}'.format((controlword & (1 << 3)) >> 3))
+        print('Bit 02: OC / OFF3 Do not activate quick stop            {0}'.format((controlword & (1 << 2)) >> 2))
+        print('Bit 01: OC / OFF2 Do not activate coast:                {0}'.format((controlword & (1 << 1)) >> 1))
         print('Bit 00: ON/OFF1:                                        {0}'.format(controlword & 1))
         return
 
@@ -776,8 +791,6 @@ class SINAMICS:
         newData = newData.to_bytes(length, 'little')
         return self.writeObject(index, 0, newData)
 
-
-
     def printParameter(self, parameter=None, isFloat=False):
         """Print value of requested SINAMICS parameter.
 
@@ -792,8 +805,8 @@ class SINAMICS:
         val, Ok = self.readParameter(parameter=parameter)
         if not Ok:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
-                    self.__class__.__name__,
-                    sys._getframe().f_code.co_name))
+                self.__class__.__name__,
+                sys._getframe().f_code.co_name))
             return
 
         if isFloat:
@@ -805,20 +818,20 @@ class SINAMICS:
     def setTargetVelocity(self, rpm=0):
         """
         Set target velocity for sinamics
-        
-        Args: 
+
+        Args:
             rpm: velocity in rpms. Must be a signed int32
         Returns:
             A boolean if all went ok or not.
         """
         index = self.objectIndex['TargetVelocity']
         subindex = 0
-        if rpm > 2**31 or rpm < -2**31:
+        if rpm > 2 ** 31 or rpm < -2 ** 31:
             self.logInfo("RPM value outside range: {0}".format(rpm))
             return False
-        
+
         return self.writeObject(index, subindex, rpm.to_bytes(4, 'little', signed=True))
-    
+
     def readVOFminVoltage(self):
         """
         Read minimum V/F voltage for frequency equal to zero
@@ -860,7 +873,7 @@ class SINAMICS:
             return
         else:
             print('VOF min Voltage value is {0}V'.format(struct.unpack('<f', val)))
-            #print('VOF min Voltage value is {0}V'.format(int.from_bytes(val, 'little')))
+            # print('VOF min Voltage value is {0}V'.format(int.from_bytes(val, 'little')))
         return
 
     def readVOFcharVoltage(self):
@@ -993,8 +1006,6 @@ def main():
 
         for var in message:
             print('%s = %d' % (var.name, var.raw))
-
-
 
     import argparse
     if (sys.version_info < (3, 0)):
