@@ -39,7 +39,7 @@ class SINAMICS:
     logger = None
     _connected = False
     # If EDS file is present, this is not necessary, all codes can be gotten
-    # from object dicionary.
+    # from object dictionary.
     objectIndex = {  # control unit objects, independent of drive:
         'Device Type': 0x1000,
         'Error Register': 0x1001,
@@ -164,11 +164,11 @@ class SINAMICS:
     # AbortCode: Description
     errorIndex = {0x00000000: 'Error code: no error',
                   # 0x050x xxxx
-                  0x05030000: 'Error code: toogle bit not alternated',
+                  0x05030000: 'Error code: toggle bit not alternated',
                   0x05040000: 'Error code: SDO protocol timeout',
                   0x05040001: 'Error code: Client/server command specifier not valid or unknown',
-                  0x05040002: 'Error code: invalide block size',
-                  0x05040003: 'Error code: invalide sequence number',
+                  0x05040002: 'Error code: invalid block size',
+                  0x05040003: 'Error code: invalid sequence number',
                   0x05040004: 'Error code: CRC error',
                   0x05040005: 'Error code: out of memory',
                   # 0x060x xxxx
@@ -185,7 +185,7 @@ class SINAMICS:
                   0x06070012: 'Error code: data type does not match, length of service parameter too high',
                   0x06070013: 'Error code: data type does not match, length of service parameter too low',
                   0x06090011: 'Error code: subindex does not exist',
-                  0x06090030: 'Error code: value range of parameter exeeded',
+                  0x06090030: 'Error code: value range of parameter exceeded',
                   0x06090031: 'Error code: value of parameter written is too high',
                   0x06090032: 'Error code: value of parameter written is too low',
                   0x06090036: 'Error code: maximum value is less than minimum value',
@@ -229,7 +229,7 @@ class SINAMICS:
         else:
             self.logger.setLevel(logging.INFO)
 
-    def logInfo(self, message=None):
+    def log_info(self, message=None):
         """ Log a message
 
         A wrap around logging.
@@ -248,8 +248,8 @@ class SINAMICS:
             message))
         return
 
-    def logDebug(self, message=None):
-        """ Log a message
+    def log_debug(self, message=None):
+        """ Log a message with debug level
 
         A wrap around logging.
         The log message will have the following structure\:
@@ -271,39 +271,39 @@ class SINAMICS:
             message))
         return
 
-    def begin(self, nodeID, _channel='can0', _bustype='socketcan', objectDictionary=None):
+    def begin(self, nodeID, _channel='can0', _bustype='socketcan', object_dictionary=None):
         """Initialize SINAMICS device
 
         Configure and setup SINAMICS device.
 
         Args:
             nodeID:    Node ID of the device.
-            channel (optional):   Port used for communication. Default can0
-            bustype (optional):   Port type used. Default socketcan.
-            objectDictionary (optional):   Name of EDS file, if any available.
+            _channel (optional):   Port used for communication. Default can0
+            _bustype (optional):   Port type used. Default socketcan.
+            object_dictionary (optional):   Name of EDS file, if any available.
         Return:
             bool: A boolean if all went ok.
         """
         try:
             self.node = self.network.add_node(
-                nodeID, object_dictionary=objectDictionary)
+                nodeID, object_dictionary=object_dictionary)
             self.network.connect(channel=_channel, bustype=_bustype)
             self._connected = True
         except Exception as e:
-            self.logInfo("Exception caught:{0}".format(str(e)))
+            self.log_info("Exception caught:{0}".format(str(e)))
             self._connected = False
         finally:
             return self._connected
 
     def disconnect(self):
-        self.network.disconnect
+        self.network.disconect()
         self._connected = False
         return
 
     # --------------------------------------------------------------
     # Basic set of functions
     # --------------------------------------------------------------
-    def readObject(self, index, subindex):
+    def read_object(self, index, subindex):
         """Reads an object
 
          Request a read from dictionary object referenced by index and subindex.
@@ -318,14 +318,14 @@ class SINAMICS:
             try:
                 return self.node.sdo.upload(index, subindex)
             except Exception as e:
-                self.logInfo('Exception caught:{0}'.format(str(e)))
+                self.log_info('Exception caught:{0}'.format(str(e)))
                 return None
         else:
-            self.logInfo(' Error: {0} is not connected'.format(
+            self.log_info(' Error: {0} is not connected'.format(
                 self.__class__.__name__))
             return None
 
-    def writeObject(self, index, subindex, data):
+    def write_object(self, index, subindex, data):
         """Write an object
 
          Request a write to dictionary object referenced by index and subindex.
@@ -345,34 +345,34 @@ class SINAMICS:
                 text = "Code 0x{:08X}".format(e.code)
                 if e.code in self.errorIndex:
                     text = text + ", " + self.errorIndex[e.code]
-                self.logInfo('SdoAbortedError: ' + text)
+                self.log_info('SdoAbortedError: ' + text)
                 return False
             except canopen.SdoCommunicationError:
-                self.logInfo('SdoAbortedError: Timeout or unexpected response')
+                self.log_info('SdoAbortedError: Timeout or unexpected response')
                 return False
         else:
-            self.logInfo(' Error: {0} is not connected'.format(
+            self.log_info(' Error: {0} is not connected'.format(
                 self.__class__.__name__))
             return False
 
     # ------------------------------------------------------------------------------
     # High level functions
     # ------------------------------------------------------------------------------
-    def readStatusWord(self):
+    def read_statusword(self):
         """Read statusword from device
 
         Returns:
-            tupple: A tupple containing:
+            tuple: A tuple containing:
 
             :statusword:  the current value or None if any error.
             :Ok: A boolean if all went ok or not.
         """
         index = self.objectIndex['StatusWord']
         subindex = 0
-        statusword = self.readObject(index, subindex)
-        # failded to request?
+        statusword = self.read_object(index, subindex)
+        # failed to request?
         if not statusword:
-            self.logInfo('Error trying to read {0} statusword'.format(
+            self.log_info('Error trying to read {0} statusword'.format(
                 self.__class__.__name__))
             return statusword, False
 
@@ -380,7 +380,7 @@ class SINAMICS:
         statusword = int.from_bytes(statusword, 'little')
         return statusword, True
 
-    def writeControlWord(self, controlword):
+    def write_controlword(self, controlword):
         """Send controlword to device
 
         Args:
@@ -390,25 +390,25 @@ class SINAMICS:
             bool: a boolean if all went ok.
         """
         # sending new controlword
-        self.logDebug('Sending controlword Hex={0:#06X} Bin={0:#018b}'.format(controlword))
+        self.log_debug('Sending controlword Hex={0:#06X} Bin={0:#018b}'.format(controlword))
         controlword = controlword.to_bytes(2, 'little')
-        return self.writeObject(0x6040, 0, controlword)
+        return self.write_object(0x6040, 0, controlword)
 
-    def readControlWord(self):
+    def read_controlword(self):
         """Read controlword from device
 
         Returns:
-            tupple: A tupple containing:
+            tuple: A tuple containing:
 
             :controlword:  the current value or None if any error.
             :Ok: A boolean if all went ok or not.
         """
         index = self.objectIndex['ControlWord']
         subindex = 0
-        controlword = self.readObject(index, subindex)
-        # failded to request?
+        controlword = self.read_object(index, subindex)
+        # failed to request?
         if not controlword:
-            self.logInfo('Error trying to read {0} controlword'.format(
+            self.log_info('Error trying to read {0} controlword'.format(
                 self.__class__.__name__))
             return controlword, False
 
@@ -416,7 +416,7 @@ class SINAMICS:
         controlword = int.from_bytes(controlword, 'little')
         return controlword, True
 
-    def changeState(self, newState):
+    def change_state(self, new_state):
         """Change SINAMICS state
 
         Change SINAMICS state using controlWord object
@@ -445,81 +445,81 @@ class SINAMICS:
         see section 8.1.3 of firmware for more information
 
         Args:
-            newState: string with state witch user want to switch.
+            new_state: string with state witch user want to switch.
 
         Returns:
             bool: boolean if all went ok and no error was received.
         """
-        stateOrder = ['shutdown', 'switch on', 'disable voltage', 'quick stop',
+        state_order = ['shutdown', 'switch on', 'disable voltage', 'quick stop',
                       'disable operation', 'enable operation', 'fault reset']
 
-        if not (newState in stateOrder):
-            self.logInfo('Unknown state: {0}'.format(newState))
+        if not (new_state in state_order):
+            self.log_info('Unknown state: {0}'.format(new_state))
             return False
         else:
-            controlword, Ok = self.readControlWord()
-            if not Ok:
-                self.logInfo('Failed to retrieve controlword')
+            controlword, ok = self.read_controlword()
+            if not ok:
+                self.log_info('Failed to retrieve controlword')
                 return False
             # shutdown  0xxx x110
-            if newState == 'shutdown':
+            if new_state == 'shutdown':
                 # clear bits
                 mask = ~ (1 << 7 | 1 << 0)
                 controlword = controlword & mask
                 # set bits
                 mask = (1 << 2 | 1 << 1)
                 controlword = controlword | mask
-                return self.writeControlWord(controlword)
+                return self.write_controlword(controlword)
             # switch on 0xxx x111
-            if newState == 'switch on':
+            if new_state == 'switch on':
                 # clear bits
                 mask = ~ (1 << 7)
                 controlword = controlword & mask
                 # set bits
                 mask = (1 << 2 | 1 << 1 | 1 << 0)
                 controlword = controlword | mask
-                return self.writeControlWord(controlword)
+                return self.write_controlword(controlword)
             # disable voltage 0xxx xx0x
-            if newState == 'switch on':
+            if new_state == 'switch on':
                 # clear bits
                 mask = ~ (1 << 7 | 1 << 1)
                 controlword = controlword & mask
-                return self.writeControlWord(controlword)
+                return self.write_controlword(controlword)
             # quick stop 0xxx x01x
-            if newState == 'quick stop':
+            if new_state == 'quick stop':
                 # clear bits
                 mask = ~ (1 << 7 | 1 << 2)
                 controlword = controlword & mask
                 # set bits
                 mask = (1 << 1)
                 controlword = controlword | mask
-                return self.writeControlWord(controlword)
+                return self.write_controlword(controlword)
             # disable operation 0xxx 0111
-            if newState == 'disable operation':
+            if new_state == 'disable operation':
                 # clear bits
                 mask = ~ (1 << 7 | 1 << 3)
                 controlword = controlword & mask
                 # set bits
                 mask = (1 << 2 | 1 << 1 | 1 << 0)
                 controlword = controlword | mask
-                return self.writeControlWord(controlword)
+                return self.write_controlword(controlword)
             # enable operation 0xxx 1111
-            if newState == 'enable operation':
+            if new_state == 'enable operation':
                 # clear bits
                 mask = ~ (1 << 7)
                 controlword = controlword & mask
                 # set bits
                 mask = (1 << 3 | 1 << 2 | 1 << 1 | 1 << 0)
                 controlword = controlword | mask
-                return self.writeControlWord(controlword)
+                return self.write_controlword(controlword)
             # fault reset 1xxx xxxx
-            if newState == 'fault reset':
+            if new_state == 'fault reset':
                 # set bits
                 mask = (1 << 7)
                 controlword = controlword | mask
-                return self.writeControlWord(controlword)
+                return self.write_controlword(controlword)
 
-    def checkState(self):
+    def check_state(self):
         """Check current state of SINAMICS
 
         Ask the StatusWord of SINAMICS and parse it to return the current state
@@ -557,9 +557,9 @@ class SINAMICS:
         Returns:
             int: numeric identification of the state or -1 in case of fail.
         """
-        statusword, ok = self.readStatusWord()
+        statusword, ok = self.read_statusword()
         if not ok:
-            self.logInfo('Failed to request StatusWord')
+            self.log_info('Failed to request StatusWord')
         else:
 
             # state 'start' (0)
@@ -646,10 +646,10 @@ class SINAMICS:
                 return ID
 
         # in case of unknown state or fail
-        self.logInfo('Error: Unknown state. Statusword is Bin={0:#018b}'.format(statusword))
+        self.log_info('Error: Unknown state. Statusword is Bin={0:#018b}'.format(statusword))
         return -1
 
-    def printStatusWord(self):
+    def print_statusword(self):
         """ Print meaning of status word.
 
         See manual_ page 30 for meaning of each bit value.
@@ -657,7 +657,7 @@ class SINAMICS:
         .. _manual: https://w5.siemens.com/web/cz/cz/corporate/portal/home/produkty_a_sluzby/IBT/mereni_a_regulace/frekvencni_menice/Documents/014_Parameter_Manual_CU230P_V441_en.pdf
 
         """
-        statusword, Ok = self.readStatusWord()
+        statusword, Ok = self.read_statusword()
         if not Ok:
             print('[{0}:{1}] Failed to retreive statusword\n'.format(
                 self.__class__.__name__,
@@ -701,7 +701,7 @@ class SINAMICS:
             print('Bit 00: Ready to switch on:                                    {0}'.format(statusword & 1))
         return
 
-    def printControlWord(self, controlword=None):
+    def print_controlword(self, controlword=None):
         """Print the meaning of controlword
 
         Check the meaning of current controlword of device or check the meaning of your own controlword.
@@ -712,7 +712,7 @@ class SINAMICS:
 
         """
         if not controlword:
-            controlword, Ok = self.readControlWord()
+            controlword, Ok = self.read_controlword()
             if not Ok:
                 print('[{0}:{1}] Failed to retreive controlword\n'.format(
                     self.__class__.__name__,
@@ -740,8 +740,8 @@ class SINAMICS:
         print('Bit 00: ON/OFF1:                                        {0}'.format(controlword & 1))
         return
 
-    def printState(self):
-        ID = self.checkState()
+    def print_state(self):
+        ID = self.check_state()
         if ID is -1:
             print('[{0}:{1}] Error: Unknown state\n'.format(
                 self.__class__.__name__,
@@ -754,44 +754,44 @@ class SINAMICS:
                 ID))
         return
 
-    def readParameter(self, parameter=None):
+    def read_parameter(self, parameter=None):
         """ Read Sinamics parameter value.
 
         Args:
             parameter: location to be read.
         Returns:
-            tupple: A tupple containing:
+            tuple: A tuple containing:
 
             :val:  the current value or None if any error.
             :Ok: A boolean if all went ok.
         """
         index = 0x2000 + parameter
-        val = self.readObject(index, 0)
+        val = self.read_object(index, 0)
         if val is None:
-            self.logInfo('Failed to request the Sinamics parameter')
+            self.log_info('Failed to request the Sinamics parameter')
             return None, False
 
         # return controlword as an int type
         return val, True
 
-    def writeParameter(self, parameter=None, newData=None, length=2):
+    def write_parameter(self, parameter=None, new_data=None, length=2):
         """ Write Sinamics parameter value
 
         Args:
             parameter: location to be written
-            newData: value to be written
+            new_data: value to be written
             length: byte length
         Returns:
             bool: A boolean if all went ok
         """
-        if (parameter is None) or (newData is None):
-            self.logInfo('Check arguments. Invalid arguments')
+        if (parameter is None) or (new_data is None):
+            self.log_info('Check arguments. Invalid arguments')
             return False
         index = 0x2000 + parameter
-        newData = newData.to_bytes(length, 'little')
-        return self.writeObject(index, 0, newData)
+        new_data = new_data.to_bytes(length, 'little')
+        return self.write_object(index, 0, new_data)
 
-    def printParameter(self, parameter=None, isFloat=False):
+    def print_parameter(self, parameter=None, is_float=False):
         """Print value of requested SINAMICS parameter.
 
         Request the SINAMICS for the current value of parameter.
@@ -800,22 +800,22 @@ class SINAMICS:
 
         Args:
             parameter: value of Sinamics parameter to be printed.
-            isFloat: Boolean, if the value to be read is float or not.
+            is_float: Boolean, if the value to be read is float or not.
         """
-        val, Ok = self.readParameter(parameter=parameter)
+        val, Ok = self.read_parameter(parameter=parameter)
         if not Ok:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
                 self.__class__.__name__,
                 sys._getframe().f_code.co_name))
             return
 
-        if isFloat:
+        if is_float:
             print('Parameter {0} value is {1}'.format(parameter, struct.unpack('<f', val)))
         else:
             print('Parameter {0} value is {1}'.format(parameter, int.from_bytes(val, 'little')))
         return
 
-    def setTargetVelocity(self, rpm=0):
+    def set_target_velocity(self, rpm=0):
         """
         Set target velocity for sinamics
 
@@ -827,25 +827,25 @@ class SINAMICS:
         index = self.objectIndex['TargetVelocity']
         subindex = 0
         if rpm > 2 ** 31 or rpm < -2 ** 31:
-            self.logInfo("RPM value outside range: {0}".format(rpm))
+            self.log_info("RPM value outside range: {0}".format(rpm))
             return False
 
-        return self.writeObject(index, subindex, rpm.to_bytes(4, 'little', signed=True))
+        return self.write_object(index, subindex, rpm.to_bytes(4, 'little', signed=True))
 
-    def readVOFminVoltage(self):
+    def read_vof_min_voltage(self):
         """
         Read minimum V/F voltage for frequency equal to zero
 
         Return:
             int: current value of V/F voltage for f=0 or None if failed
         """
-        val, ok = self.readParameter(1319)
+        val, ok = self.read_parameter(1319)
         if not ok:
             return None
         else:
             return val
 
-    def setVOFminVoltage(self, voltage=None):
+    def set_vof_min_voltage(self, voltage=None):
         """
         Write minimum V/F voltage for frequency equal to zero
 
@@ -854,18 +854,18 @@ class SINAMICS:
 
         """
         if voltage is None:
-            self.logInfo('Invalid arguments. No voltage value supplied')
+            self.log_info('Invalid arguments. No voltage value supplied')
             return False
         if voltage < 0 or voltage > 50:
-            self.logInfo('Voltage limits exceeded: {0}. Value must be between 0 and 50.'.format(voltage))
+            self.log_info('Voltage limits exceeded: {0}. Value must be between 0 and 50.'.format(voltage))
             return False
-        return self.writeParameter(parameter=1319, newData=voltage, length=2)
+        return self.write_parameter(parameter=1319, new_data=voltage, length=2)
 
-    def printVOFminVoltage(self):
+    def print_vof_min_voltage(self):
         """
         Print value of voltage for frequency equal to zero
         """
-        val = self.readVOFminVoltage()
+        val = self.read_vof_min_voltage()
         if not val:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
                 self.__class__.__name__,
@@ -876,20 +876,20 @@ class SINAMICS:
             # print('VOF min Voltage value is {0}V'.format(int.from_bytes(val, 'little')))
         return
 
-    def readVOFcharVoltage(self):
+    def read_vof_char_voltage(self):
         """
         Read minimum V/F voltage for characteristic frequency.
 
         Return:
             int: current value of V/F voltage for characteristic frequency or None if failed
         """
-        val, ok = self.readParameter(1327)
+        val, ok = self.read_parameter(1327)
         if not ok:
             return None
         else:
             return val
 
-    def setVOFcharVoltage(self, voltage=None):
+    def set_vof_char_voltage(self, voltage=None):
         """
         Write  V/F voltage for characteristic frequency
 
@@ -898,18 +898,18 @@ class SINAMICS:
 
         """
         if voltage is None:
-            self.logInfo('Invalid arguments. No voltage value supplied')
+            self.log_info('Invalid arguments. No voltage value supplied')
             return False
         if voltage < 0 or voltage > 10000:
-            self.logInfo('Voltage limits exceeded: {0}. Value must be between 0 and 10000.'.format(voltage))
+            self.log_info('Voltage limits exceeded: {0}. Value must be between 0 and 10000.'.format(voltage))
             return False
-        return self.writeParameter(parameter=1327, newData=voltage, length=2)
+        return self.write_parameter(parameter=1327, new_data=voltage, length=2)
 
-    def printVOFcharVoltage(self):
+    def print_vof_char_voltage(self):
         """
         Print value of voltage for characteristic frequency
         """
-        val = self.readVOFcharVoltage()
+        val = self.read_vof_char_voltage()
         if not val:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
                 self.__class__.__name__,
@@ -919,20 +919,20 @@ class SINAMICS:
             print('VOF characteristic Voltage value is {0}V'.format(struct.unpack('<f', val)))
         return
 
-    def readVOFcharFrequency(self):
+    def read_vof_char_frequency(self):
         """
         Read minimum V/F voltage for characteristic frequency.
 
         Return:
             int: current value of V/F voltage for characteristic frequency or None if failed
         """
-        val, ok = self.readParameter(1326)
+        val, ok = self.read_parameter(1326)
         if not ok:
             return None
         else:
             return val
 
-    def setVOFcharFrequency(self, frequency=None):
+    def set_vof_char_frequency(self, frequency=None):
         """
         Write  V/F voltage for characteristic frequency
 
@@ -941,18 +941,18 @@ class SINAMICS:
 
         """
         if frequency is None:
-            self.logInfo('Invalid arguments. No voltage value supplied')
+            self.log_info('Invalid arguments. No voltage value supplied')
             return False
         if frequency < 0 or frequency > 10000:
-            self.logInfo('Frequency limits exceeded: {0}. Value must be between 0 and 10000.'.format(frequency))
+            self.log_info('Frequency limits exceeded: {0}. Value must be between 0 and 10000.'.format(frequency))
             return False
-        return self.writeParameter(parameter=1327, newData=frequency, length=2)
+        return self.write_parameter(parameter=1327, new_data=frequency, length=2)
 
-    def printVOFcharFrequency(self):
+    def print_vof_char_frequency(self):
         """
         Print value of characteristic frequency
         """
-        val = self.readVOFcharFrequency()
+        val = self.read_vof_char_frequency()
         if not val:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
                 self.__class__.__name__,
@@ -962,11 +962,11 @@ class SINAMICS:
             print('VOF characteristic frequency value is {0}Hz'.format(struct.unpack('<f', val)))
         return
 
-    def printTorqueSmoothed(self):
+    def print_torque_smoothed(self):
         """
         Print value of smoothed torque
         """
-        val, ok = self.readParameter(parameter=31)
+        val, ok = self.read_parameter(parameter=31)
         if not ok:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
                 self.__class__.__name__,
@@ -976,11 +976,11 @@ class SINAMICS:
             print('Torque smoothed value is {0}N'.format(struct.unpack('<f', val)))
         return
 
-    def printCurrentSmoothed(self):
+    def print_current_smoothed(self):
         """
         Print value of smoothed current
         """
-        val, ok = self.readParameter(parameter=27)
+        val, ok = self.read_parameter(parameter=27)
         if not ok:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
                 self.__class__.__name__,
@@ -1056,7 +1056,7 @@ def main():
     # instantiate object
     inverter = SINAMICS()
 
-    if not (inverter.begin(args.nodeID, objectDictionary=args.objDict)):
+    if not (inverter.begin(args.nodeID, object_dictionary=args.objDict)):
         logging.info('Failed to begin connection with SINAMICS device')
         logging.info('Exiting now')
         return
@@ -1082,7 +1082,7 @@ def main():
 
     # use simple hex values
     # try to read status word
-    statusword = inverter.readObject(0x6041, 0)
+    statusword = inverter.read_object(0x6041, 0)
     if not statusword:
         print("[SINAMICS] Error trying to read SINAMICS statusword\n")
         return
@@ -1091,7 +1091,7 @@ def main():
         print("The statusword is \n Hex={0:#06X} Bin={0:#018b}".format(
             int.from_bytes(statusword, 'little')))
     # try to read operation mode
-    opMode = inverter.readObject(0x6060, 0)
+    opMode = inverter.read_object(0x6060, 0)
     if not opMode:
         print("[SINAMICS] Error trying to read SINAMICS opMode\n")
         return
@@ -1099,27 +1099,27 @@ def main():
         print('----------------------------------------------------------', flush=True)
         print("The opMode is \n Hex={0:#06X} Bin={0:#018b}".format(
             int.from_bytes(opMode, 'little')))
-    # test printStatusWord and state
+    # test print_statusword and state
     print('----------------------------------------------------------', flush=True)
     print('Testing print of StatusWord and State and ControlWord')
     print('----------------------------------------------------------', flush=True)
-    inverter.printState()
+    inverter.print_state()
     print('----------------------------------------------------------', flush=True)
-    inverter.printStatusWord()
+    inverter.print_statusword()
     print('----------------------------------------------------------', flush=True)
-    inverter.printControlWord()
+    inverter.print_controlword()
     print('----------------------------------------------------------', flush=True)
     # print VOF vars
     print('Testing print of VOF related variables')
     print('----------------------------------------------------------', flush=True)
-    inverter.printVOFminVoltage()
-    inverter.printVOFcharVoltage()
-    inverter.printVOFcharFrequency()
+    inverter.print_vof_min_voltage()
+    inverter.print_vof_char_voltage()
+    inverter.print_vof_char_frequency()
     print('----------------------------------------------------------', flush=True)
     print('Testing print of Torque and current values')
     print('----------------------------------------------------------', flush=True)
-    inverter.printTorqueSmoothed()
-    inverter.printCurrentSmoothed()
+    inverter.print_torque_smoothed()
+    inverter.print_current_smoothed()
     print('----------------------------------------------------------', flush=True)
     # create
 
@@ -1146,7 +1146,7 @@ def main():
     # inverter.node.pdo.tx[2].event_timer = 2000
     inverter.node.pdo.tx[2].trans_type = 254
 
-    inverter.changeState('fault reset')
+    inverter.change_state('fault reset')
     sleep(0.1)
     # Save parameters to device
     inverter.node.pdo.tx[2].save()
@@ -1158,14 +1158,14 @@ def main():
     inverter.node.nmt.state = 'OPERATIONAL'
     # TODO change State is failing. to be checked
     sleep(0.1)
-    inverter.writeObject(0x6040, 0, (6).to_bytes(2, 'little'))
-    # inverter.changeState('shutdown')
+    inverter.write_object(0x6040, 0, (6).to_bytes(2, 'little'))
+    # inverter.change_state('shutdown')
     sleep(0.1)
-    inverter.writeObject(0x6040, 0, (7).to_bytes(2, 'little'))
-    # inverter.changeState('switch on')
+    inverter.write_object(0x6040, 0, (7).to_bytes(2, 'little'))
+    # inverter.change_state('switch on')
     sleep(0.1)
-    inverter.writeObject(0x6040, 0, (15).to_bytes(2, 'little'))
-    # inverter.changeState('enable operation')
+    inverter.write_object(0x6040, 0, (15).to_bytes(2, 'little'))
+    # inverter.change_state('enable operation')
 
     try:
         print("Ctrl+C to exit... ")
@@ -1175,7 +1175,7 @@ def main():
                 pass
             else:
                 print('Setting velocity to {0}'.format(velocity))
-                inverter.setTargetVelocity(velocity)
+                inverter.set_target_velocity(velocity)
             sleep(1)
     except KeyboardInterrupt as e:
         print('Got {0}\nexiting now'.format(e))
@@ -1184,9 +1184,9 @@ def main():
     finally:
         # inverter.network.sync.stop()
         inverter.node.nmt.state = 'PRE-OPERATIONAL'
-        inverter.setTargetVelocity(0)
-        # inverter.writeObject(0x6040, 0, (0).to_bytes(2, 'little'))
-        inverter.changeState('shutdown')
+        inverter.set_target_velocity(0)
+        # inverter.write_object(0x6040, 0, (0).to_bytes(2, 'little'))
+        inverter.change_state('shutdown')
     return
 
 
