@@ -1007,6 +1007,13 @@ def main():
         for var in message:
             print('%s = %d' % (var.name, var.raw))
 
+    def emcy_error_print(emcy_error):
+        """Print any EMCY Error Received on CAN BUS
+        """
+        logging.info('[{0}] Got an EMCY message: {1}'.format(
+            sys._getframe().f_code.co_name, emcy_error))
+        return
+
     import argparse
     if (sys.version_info < (3, 0)):
         print("Please use python version 3")
@@ -1121,7 +1128,9 @@ def main():
     inverter.print_torque_smoothed()
     inverter.print_current_smoothed()
     print('----------------------------------------------------------', flush=True)
-    # create
+
+    # emcy messages handles
+    inverter.node.emcy.add_callback(emcy_error_print)
 
     # testing pdo objects
     inverter.node.pdo.read()
