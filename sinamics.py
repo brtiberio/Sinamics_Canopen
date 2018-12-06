@@ -1190,6 +1190,8 @@ def main():
         print('Got {0}\nexiting now'.format(e))
     except CanError:
         print("Message NOT sent")
+    except ValueError:
+        print("Invalid value")
     finally:
         # inverter.network.sync.stop()
         inverter.node.nmt.state = 'PRE-OPERATIONAL'
