@@ -28,15 +28,15 @@ from time import sleep
 import struct
 from can import CanError  # TODO restudy need of this import since canopen already use it
 
-
-# import pdb
 # import pydevd
-# pydevd.settrace('192.168.1.181', port=9000, stdoutToServer=True, stderrToServer=True)
+
+# pydevd.settrace('192.168.31.124', port=8000, stdoutToServer=True, stderrToServer=True)
 
 
 class SINAMICS:
     network = None
     logger = None
+    node = None
     _connected = False
     # If EDS file is present, this is not necessary, all codes can be gotten
     # from object dictionary.
@@ -203,6 +203,39 @@ class SINAMICS:
                   0x0f00ffbc: 'Error code: device not in service mode',
                   0x0f00ffB9: 'Error code: error in Node-ID'
                   }
+    # dictionary sinamics fault number list
+    sinamics_fault_number = {  # 1000 - 3999 - Control Unit
+                             1000: 'Internal software error',
+                             1002: 'Internal software error',
+                             1004: 'Internal software error (N)',
+                             1009: 'CU: Control module overtemperature',
+                             1015: 'Internal software error',
+                             1023: 'Software timeout (internal)',
+                             1030: 'Sign-of-life failure for master control',
+                             3506: '24 V power supply  missing',
+                             # 5000 - 5999 - Power Section
+                             5000: 'Power unit: Overtemperature heat sink AC inverter',
+                             # 7000 - 7999 - Drive
+                             7011: 'Drive: Motor overtemperature',
+                             7012: 'Drive: Motor temperature model 1/3 overtemperature',
+                             7013: 'Drive: Motor temperature model configuration fault',
+                             7014: 'Drive: Motor temperature configuration alarm',
+                             7015: 'Drive: Motor temperature sensor alarm',
+                             7016: 'Drive: Motor temperature sensor fault',
+                             7801: 'Drive: Motor overcurrent',
+                             7802: 'Drive: Infeed or power unit not ready',
+                             7910: 'Drive: Motor overtemperature',
+                             # 30000 Drive CliQ
+                             30001: 'Power unit: Overcurrent',
+                             30002: 'Power unit: DC link voltage overvoltage',
+                             30003: 'Power unit: DC link voltage undervoltage',
+                             30004: 'Power unit: Overtemperature heat sink AC inverter',
+                             30021: 'Power unit: Ground fault',
+                             30024: 'Power unit: Overtemperature thermal model',
+                             30034: 'Power unit: Internal overtemperature',
+                             30036: 'Power unit: Internal overtemperature',
+                             30045: 'Power unit: Supply undervoltage'}
+
     # dictionary describing opMode
     opModes = {0: 'No mode assigned', 3: 'Profile Velocity Mode', -1: 'Manufacturer-specific OP1',
                -2: 'Manufacturer-specific OP2', -3: 'Manufacturer-specific OP3', -4: 'Manufacturer-specific OP4',
@@ -289,6 +322,9 @@ class SINAMICS:
                 nodeID, object_dictionary=object_dictionary)
             self.network.connect(channel=_channel, bustype=_bustype)
             self._connected = True
+            val, _ = self.read_statusword()  # test if we really have response or is only connected to CAN bus
+            if val is None:
+                self._connected = False
         except Exception as e:
             self.log_info("Exception caught:{0}".format(str(e)))
             self._connected = False
@@ -451,7 +487,7 @@ class SINAMICS:
             bool: boolean if all went ok and no error was received.
         """
         state_order = ['shutdown', 'switch on', 'disable voltage', 'quick stop',
-                      'disable operation', 'enable operation', 'fault reset']
+                       'disable operation', 'enable operation', 'fault reset']
 
         if not (new_state in state_order):
             self.log_info('Unknown state: {0}'.format(new_state))
@@ -788,7 +824,8 @@ class SINAMICS:
             self.log_info('Check arguments. Invalid arguments')
             return False
         index = 0x2000 + parameter
-        new_data = new_data.to_bytes(length, 'little')
+        if type(new_data) is not bytes:
+            new_data = new_data.to_bytes(length, 'little')
         return self.write_object(index, 0, new_data)
 
     def print_parameter(self, parameter=None, is_float=False):
@@ -802,15 +839,15 @@ class SINAMICS:
             parameter: value of Sinamics parameter to be printed.
             is_float: Boolean, if the value to be read is float or not.
         """
-        val, Ok = self.read_parameter(parameter=parameter)
-        if not Ok:
+        val, ok = self.read_parameter(parameter=parameter)
+        if not ok:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
                 self.__class__.__name__,
                 sys._getframe().f_code.co_name))
             return
 
         if is_float:
-            print('Parameter {0} value is {1}'.format(parameter, struct.unpack('<f', val)))
+            print('Parameter {0} value is {1}'.format(parameter, struct.unpack('<f', val)[0]))
         else:
             print('Parameter {0} value is {1}'.format(parameter, int.from_bytes(val, 'little')))
         return
@@ -843,7 +880,7 @@ class SINAMICS:
         if not ok:
             return None
         else:
-            return val
+            return struct.unpack('<f', val)[0]  # struct unpack returns a tupple even if only one value
 
     def set_vof_min_voltage(self, voltage=None):
         """
@@ -859,7 +896,8 @@ class SINAMICS:
         if voltage < 0 or voltage > 50:
             self.log_info('Voltage limits exceeded: {0}. Value must be between 0 and 50.'.format(voltage))
             return False
-        return self.write_parameter(parameter=1319, new_data=voltage, length=2)
+        voltage = struct.pack('<f', voltage)
+        return self.write_parameter(parameter=1319, new_data=voltage, length=4)
 
     def print_vof_min_voltage(self):
         """
@@ -872,7 +910,7 @@ class SINAMICS:
                 sys._getframe().f_code.co_name))
             return
         else:
-            print('VOF min Voltage value is {0}V'.format(struct.unpack('<f', val)))
+            print('VOF min Voltage value is {0}V'.format(val))
             # print('VOF min Voltage value is {0}V'.format(int.from_bytes(val, 'little')))
         return
 
@@ -887,7 +925,7 @@ class SINAMICS:
         if not ok:
             return None
         else:
-            return val
+            return struct.unpack('<f', val)[0]  # struct unpack returns a tupple even if only one value
 
     def set_vof_char_voltage(self, voltage=None):
         """
@@ -903,7 +941,8 @@ class SINAMICS:
         if voltage < 0 or voltage > 10000:
             self.log_info('Voltage limits exceeded: {0}. Value must be between 0 and 10000.'.format(voltage))
             return False
-        return self.write_parameter(parameter=1327, new_data=voltage, length=2)
+        voltage = struct.pack('<f', voltage)
+        return self.write_parameter(parameter=1327, new_data=voltage, length=4)
 
     def print_vof_char_voltage(self):
         """
@@ -916,7 +955,7 @@ class SINAMICS:
                 sys._getframe().f_code.co_name))
             return
         else:
-            print('VOF characteristic Voltage value is {0}V'.format(struct.unpack('<f', val)))
+            print('VOF characteristic Voltage value is {0} V'.format(val))
         return
 
     def read_vof_char_frequency(self):
@@ -930,7 +969,7 @@ class SINAMICS:
         if not ok:
             return None
         else:
-            return val
+            return struct.unpack('<f', val)[0]
 
     def set_vof_char_frequency(self, frequency=None):
         """
@@ -946,7 +985,8 @@ class SINAMICS:
         if frequency < 0 or frequency > 10000:
             self.log_info('Frequency limits exceeded: {0}. Value must be between 0 and 10000.'.format(frequency))
             return False
-        return self.write_parameter(parameter=1327, new_data=frequency, length=2)
+        frequency = struct.pack('<f', frequency)
+        return self.write_parameter(parameter=1326, new_data=frequency, length=4)
 
     def print_vof_char_frequency(self):
         """
@@ -959,35 +999,80 @@ class SINAMICS:
                 sys._getframe().f_code.co_name))
             return
         else:
-            print('VOF characteristic frequency value is {0}Hz'.format(struct.unpack('<f', val)))
+            print('VOF characteristic frequency value is {0} Hz'.format(val))
         return
+
+    def read_torque_smoothed(self):
+        """
+        Read torque smoothed value.
+
+        Return:
+            float: current value of torque smoothed.
+        """
+        val, ok = self.read_parameter(parameter=31)
+        if not ok:
+            self.log_info("Failed to retrieve torque value")
+            return None
+        else:
+            return struct.unpack('<f', val)[0]
 
     def print_torque_smoothed(self):
         """
         Print value of smoothed torque
         """
-        val, ok = self.read_parameter(parameter=31)
-        if not ok:
+        val = self.read_torque_smoothed()
+        if val is None:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
                 self.__class__.__name__,
                 sys._getframe().f_code.co_name))
             return
         else:
-            print('Torque smoothed value is {0}N'.format(struct.unpack('<f', val)))
+            print('Torque smoothed value is {0} N'.format(val))
         return
+
+    def read_current_smoothed(self):
+        """ Read current smoothed value.
+
+        Return:
+            float: value of current smoothed.
+        """
+        val, ok = self.read_parameter(parameter=27)
+        if not ok:
+            self.log_info("Failed to retrieve current value")
+            return None
+        else:
+            return struct.unpack('<f', val)[0]
 
     def print_current_smoothed(self):
         """
         Print value of smoothed current
         """
-        val, ok = self.read_parameter(parameter=27)
-        if not ok:
+        val = self.read_current_smoothed()
+        if val is None:
             print('[{0}:{1}] Failed to retrieve parameter\n'.format(
                 self.__class__.__name__,
                 sys._getframe().f_code.co_name))
             return
         else:
-            print('Torque smoothed value is {0}A rms'.format(struct.unpack('<f', val)))
+            print('Current smoothed value is {0} A rms'.format(val))
+        return
+
+    def emcy_error_print(self, emcy_error):
+        """Print any EMCY Error Received on CAN BUS
+        """
+        if emcy_error.code is 0:
+            return
+        else:
+            fault_number = int.from_bytes(emcy_error.data[0:2], 'little')
+            drive_object_number = int(emcy_error.data[2])
+            if fault_number in self.sinamics_fault_number:
+                description = self.sinamics_fault_number[fault_number]
+            else:
+                description = "unknown"
+            self.log_info('Got an EMCY message {0}'.format(emcy_error))
+            self.log_info('Sinamics error number: {0} with \'{1}\' in drive unit {2}'.format(fault_number,
+                                                                                             description,
+                                                                                             drive_object_number))
         return
 
 
@@ -1000,22 +1085,22 @@ def main():
     Show sample using also the EDS file.
     """
 
-    def print_message(message):
-        print('%s received' % message.name)
-        print("--")
+    def print_velocity(message):
+        """Print velocity value received from PDO
 
-        for var in message:
-            print('%s = %d' % (var.name, var.raw))
-
-    def emcy_error_print(emcy_error):
-        """Print any EMCY Error Received on CAN BUS
+        Args:
+            message: message received in PDO
         """
-        logging.info('[{0}] Got an EMCY message: {1}'.format(
-            sys._getframe().f_code.co_name, emcy_error))
-        return
+        logging.debug('{0} received'.format(message.name))
+        for var in message:
+            logging.debug('{0} = {1:06X}'.format(var.name, var.raw))
+            if var.index == 0x6041:
+                pass
+            if var.index == 0x606C:
+                logging.info('{0:+05d} RPM'.format(var.raw))
 
     import argparse
-    if (sys.version_info < (3, 0)):
+    if sys.version_info < (3, 0):
         print("Please use python version 3")
         return
 
@@ -1067,6 +1152,12 @@ def main():
         logging.info('Failed to begin connection with SINAMICS device')
         logging.info('Exiting now')
         return
+    # -------------------------------------------------------------------------------------
+    # change default parameters for checking collisions.
+    # -------------------------------------------------------------------------------------
+    inverter.node.sdo.MAX_RETRIES = 2
+    # inverter.node.sdo.PAUSE_BEFORE_SEND = 0.02
+    # inverter.node.sdo.RESPONSE_TIMEOUT = 0.02
 
     # check if EDS file is supplied and print it
     if args.objDict:
@@ -1130,7 +1221,7 @@ def main():
     print('----------------------------------------------------------', flush=True)
 
     # emcy messages handles
-    inverter.node.emcy.add_callback(emcy_error_print)
+    inverter.node.emcy.add_callback(inverter.emcy_error_print)
 
     # testing pdo objects
     inverter.node.pdo.read()
@@ -1161,20 +1252,18 @@ def main():
     inverter.node.pdo.tx[2].save()
 
     # Add callback for message reception
-    inverter.node.pdo.tx[2].add_callback(print_message)
+    inverter.node.pdo.tx[2].add_callback(print_velocity)
 
     # Set back into operational mode
     inverter.node.nmt.state = 'OPERATIONAL'
     # TODO change State is failing. to be checked
     sleep(0.1)
-    inverter.write_object(0x6040, 0, (6).to_bytes(2, 'little'))
-    # inverter.change_state('shutdown')
+    inverter.change_state('shutdown')
     sleep(0.1)
-    inverter.write_object(0x6040, 0, (7).to_bytes(2, 'little'))
-    # inverter.change_state('switch on')
+    inverter.change_state('switch on')
     sleep(0.1)
-    inverter.write_object(0x6040, 0, (15).to_bytes(2, 'little'))
-    # inverter.change_state('enable operation')
+    inverter.change_state('enable operation')
+    inverter.print_current_smoothed()
 
     try:
         print("Ctrl+C to exit... ")
@@ -1185,7 +1274,8 @@ def main():
             else:
                 print('Setting velocity to {0}'.format(velocity))
                 inverter.set_target_velocity(velocity)
-            sleep(1)
+            sleep(3)
+            inverter.print_current_smoothed()
     except KeyboardInterrupt as e:
         print('Got {0}\nexiting now'.format(e))
     except CanError:
@@ -1196,7 +1286,6 @@ def main():
         # inverter.network.sync.stop()
         inverter.node.nmt.state = 'PRE-OPERATIONAL'
         inverter.set_target_velocity(0)
-        # inverter.write_object(0x6040, 0, (0).to_bytes(2, 'little'))
         inverter.change_state('shutdown')
     return
 
