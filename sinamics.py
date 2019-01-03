@@ -555,7 +555,7 @@ class SINAMICS:
                 controlword = controlword | mask
                 return self.write_controlword(controlword)
 
-    def check_state(self):
+    def check_state(self, statusword=None):
         """Check current state of SINAMICS
 
         Ask the StatusWord of SINAMICS and parse it to return the current state
@@ -589,11 +589,15 @@ class SINAMICS:
         | Fault                            | 11  | xxxx xxxx  x0xx 1000|
         +----------------------------------+-----+---------------------+
 
-
+        Args:
+            statusword: if not supplied, request statusword from device.
         Returns:
             int: numeric identification of the state or -1 in case of fail.
         """
-        statusword, ok = self.read_statusword()
+        if not statusword:
+            statusword, ok = self.read_statusword()
+        else:
+            ok = True
         if not ok:
             self.log_info('Failed to request StatusWord')
         else:
