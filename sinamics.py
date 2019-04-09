@@ -1133,7 +1133,7 @@ def main():
                  'critical': logging.CRITICAL
                  }
     # set up logging to file - see previous section for more details
-    logging.basicConfig(level=logging.DEBUG,
+    logging.basicConfig(level=log_level[args.logLevel],
                         format='[%(asctime)s.%(msecs)03d] [%(name)-20s]: %(levelname)-8s %(message)s',
                         datefmt='%d-%m-%Y %H:%M:%S',
                         filename='sinamics.log',
